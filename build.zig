@@ -25,4 +25,15 @@ pub fn build(b: *std.Build) void {
     const run = b.addRunArtifact(mve);
     if (b.args) |args| run.addArgs(args);
     b.step("mve", "Verify and benchmark derived kernels (use -Doptimize=ReleaseFast)").dependOn(&run.step);
+
+    const bench = b.addExecutable(.{
+        .name = "bitdp-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "bitdp", .module = mod }},
+        }),
+    });
+    b.step("bench", "Build the benchmark driver (see bench/README.md)").dependOn(&b.addInstallArtifact(bench, .{}).step);
 }

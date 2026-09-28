@@ -38,6 +38,7 @@ pub const Scheme = struct {
 };
 
 pub const max_classes = 24;
+const max_inputs = max_vals + max_classes;
 
 /// Distinct substitution costs, ascending. Class planes [cost >= c[j]] for
 /// j >= 1 are the kernel's per-text-character inputs.
@@ -69,7 +70,7 @@ pub const max_vals = 32;
 const qm_max_vals = 5;
 const max_vars = 2 * qm_max_vals - 1;
 const TT = std.meta.Int(.unsigned, 1 << max_vars);
-const max_nodes = 4096;
+const max_nodes = 2048;
 const max_primes = 512;
 
 pub const Op = enum(u8) { input, zero, ones, not, @"and", @"or", xor, add, add1, shl0, shl1 };
@@ -270,13 +271,16 @@ pub const Plan = struct {
     k: u16,
     nodes: [max_nodes]Node,
     len: u16,
-    /// Delta-v planes are stored complemented.
-    in_pol: bool,
-    /// Level t is carried complemented.
+    /// Kernel input a is stored complemented. Inputs 0..k-2 are the Delta-v
+    /// threshold planes, then one plane per substitution class above the lowest.
+    inp_pol: [max_inputs]bool,
+    /// Level t is read complemented.
     lvl_pol: [max_vals]bool,
-    /// Node computing next-column Delta-v threshold plane t (index t-1).
+    /// Node computing next-column Delta-v threshold plane t (index t-1), in
+    /// that input's stored polarity.
     out_v: [max_vals]u16,
-    /// Node computing level t of the state at each row (index t-1).
+    /// Node whose bit i holds level t of the state at row i-1 (index t-1).
+    /// The kernel reads the bottom row's state at bit m.
     out_u: [max_vals]u16,
     /// Levels that became carry chains (one addition each).
     chains: u16,
@@ -284,8 +288,6 @@ pub const Plan = struct {
     cost: u32,
     /// Substitution cost classes; kernel inputs k-1.. are [cost >= c[j]], j >= 1.
     cls: Classes,
-    /// Class planes are stored complemented, [cost < c[j]].
-    cls_pol: bool,
     /// Which builder produced the plan.
     method: enum { truth_table, direct, merge },
 };
@@ -407,7 +409,7 @@ fn build(s: Scheme, d: Diffs, cls: Classes, in_pol: bool, cls_pol: bool) Plan {
         }
         p = best.?.p;
         plan.lvl_pol[t] = best.?.pol;
-        plan.out_u[t - 1] = best.?.u;
+        plan.out_u[t - 1] = best.?.prev;
         if (best.?.chain) plan.chains += 1;
         vars[nv] = best.?.prev;
         var_of[t] = nv;
@@ -445,18 +447,44 @@ fn build(s: Scheme, d: Diffs, cls: Classes, in_pol: bool, cls_pol: bool) Plan {
     return finish(p, plan, d, cls, cls_pol, in_pol);
 }
 
-/// Fill the common Plan fields and count the word operations of live nodes.
+/// Fill the common Plan fields and count live word operations.
 fn finish(p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool) Plan {
     var plan = plan0;
-    const nl = d.k - 1;
+    plan.vals = d.vals;
+    plan.k = d.k;
+    plan.nodes = p.nodes;
+    plan.len = p.len;
+    plan.cls = cls;
+    for (0..d.k - 1) |a| plan.inp_pol[a] = in_pol;
+    for (0..cls.n -| 1) |j| plan.inp_pol[d.k - 1 + j] = cls_pol;
+    plan.cost = liveCost(plan);
+    return plan;
+}
+
+const Planes = enum { v, u };
+const max_unary = 64;
+const Unary = struct { bits: [2 * max_unary]u16 = undefined, len: usize };
+
+/// Word operations of the nodes the outputs actually use.
+fn liveCost(plan: Plan) u32 {
+    const live = liveNodes(plan);
+    var cost: u32 = 0;
+    for (plan.nodes[0..plan.len], 0..) |n, j| {
+        if (live[j]) cost += opCost(n.op);
+    }
+    return cost;
+}
+
+fn liveNodes(plan: Plan) [max_nodes]bool {
+    const nl = plan.k - 1;
     var live = [_]bool{false} ** max_nodes;
     for (plan.out_v[0..nl]) |o| live[o] = true;
     for (plan.out_u[0..nl]) |o| live[o] = true;
-    var i: usize = p.len;
+    var i: usize = plan.len;
     while (i > 0) {
         i -= 1;
         if (!live[i]) continue;
-        const n = p.nodes[i];
+        const n = plan.nodes[i];
         switch (n.op) {
             .input, .zero, .ones => {},
             .not, .shl0, .shl1 => live[n.a] = true,
@@ -466,24 +494,214 @@ fn finish(p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: b
             },
         }
     }
-    var cost: u32 = 0;
-    for (p.nodes[0..p.len], 0..) |n, j| {
-        if (live[j]) cost += opCost(n.op);
+    return live;
+}
+
+/// A node seen through its chain of NOTs: node `n`, complemented if `inv`.
+const Ref = struct { n: u16, inv: bool };
+
+/// Inverter minimization. Every AND/OR node may be built as its complement
+/// (De Morgan), and every input plane may be stored complemented, since the
+/// kernel prepares inputs for free. XOR and shifts pass polarity through;
+/// additions pin their operands. A NOT is needed only where some consumer
+/// wants a value in the polarity it is not materialized in. Local search
+/// flips one choice at a time and keeps it if the NOT count drops; each
+/// flip is evaluated incrementally, touching only the node, its children
+/// and the XOR/shift nodes whose polarity follows from it.
+fn minimizeNots(plan0: Plan) Plan {
+    @setEvalBranchQuota(1 << 30);
+    var plan = plan0;
+    const nodes = plan.nodes[0..plan.len];
+    const nl = plan.k - 1;
+    const live = liveNodes(plan);
+
+    var ref: [max_nodes]Ref = undefined;
+    var in_node: [max_inputs]u16 = undefined;
+    for (nodes, 0..) |n, i| {
+        ref[i] = if (n.op == .not) .{ .n = ref[n.a].n, .inv = !ref[n.a].inv } else .{ .n = @intCast(i), .inv = false };
+        if (n.op == .input) in_node[n.a] = @intCast(i);
     }
-    plan.vals = d.vals;
-    plan.k = d.k;
-    plan.nodes = p.nodes;
-    plan.len = p.len;
-    plan.in_pol = in_pol;
-    plan.cost = cost;
-    plan.cls = cls;
-    plan.cls_pol = cls_pol;
+    var input_of = [_]?u16{null} ** max_nodes; // input node -> Delta-v plane it feeds back to
+    for (0..nl) |t| input_of[in_node[t]] = @intCast(t);
+
+    // Derived consumers (XOR, shifts), as linked lists.
+    var head = [_]u16{empty} ** max_nodes;
+    var next: [2 * max_nodes]u16 = undefined;
+    var dst: [2 * max_nodes]u16 = undefined;
+    var ne: u16 = 0;
+    for (nodes, 0..) |n, i| {
+        if (!live[i]) continue;
+        const derived = switch (n.op) {
+            .xor, .shl0, .shl1 => true,
+            else => false,
+        };
+        if (!derived) continue;
+        const kids: []const u16 = if (n.op == .xor) &.{ ref[n.a].n, ref[n.b].n } else &.{ref[n.a].n};
+        for (kids) |c| {
+            dst[ne] = @intCast(i);
+            next[ne] = head[c];
+            head[c] = ne;
+            ne += 1;
+        }
+    }
+
+    var pol = [_]bool{false} ** max_nodes;
+    var cnt = [_][2]u16{.{ 0, 0 }} ** max_nodes;
+    for (nodes, 0..) |n, i| {
+        if (!live[i]) continue;
+        switch (n.op) {
+            .@"and", .@"or", .add, .add1 => for ([2]Ref{ ref[n.a], ref[n.b] }) |r| {
+                cnt[r.n][@intFromBool(r.inv)] += 1;
+            },
+            .xor, .shl0, .shl1 => pol[i] = derivedPol(n, &ref, &pol),
+            else => {},
+        }
+    }
+    for (0..nl) |t| {
+        const r = ref[plan.out_v[t]];
+        cnt[r.n][@intFromBool(r.inv)] += 1;
+    }
+
+    var stamp = [_]u32{0} ** max_nodes;
+    var epoch: u32 = 0;
+    var aff: [max_nodes]u16 = undefined;
+    var sweeps: usize = 0;
+    var improved = true;
+    while (improved and sweeps < 16) : (sweeps += 1) {
+        improved = false;
+        for (nodes, 0..) |n, iy| {
+            const y: u16 = @intCast(iy);
+            const flippable = switch (n.op) {
+                .@"and", .@"or" => live[y],
+                .input => true,
+                else => false,
+            };
+            if (!flippable) continue;
+
+            // Affected nodes: the XOR/shift closure of y (whose polarities
+            // follow y's), then y itself, its operands and its fed-back root.
+            epoch += 1;
+            var na: usize = 0;
+            var qi: usize = 0;
+            var frontier = y;
+            while (true) {
+                var e = head[frontier];
+                while (e != empty) : (e = next[e]) {
+                    if (stamp[dst[e]] != epoch) {
+                        stamp[dst[e]] = epoch;
+                        aff[na] = dst[e];
+                        na += 1;
+                    }
+                }
+                if (qi >= na) break;
+                frontier = aff[qi];
+                qi += 1;
+            }
+            const nd = na;
+            std.mem.sort(u16, aff[0..nd], {}, std.sort.asc(u16));
+            var extra: [4]u16 = .{ y, y, y, y };
+            if (n.op != .input) {
+                extra[1] = ref[n.a].n;
+                extra[2] = ref[n.b].n;
+            }
+            if (input_of[y]) |t| extra[3] = ref[plan.out_v[t]].n;
+            for (extra) |x| {
+                if (stamp[x] != epoch) {
+                    stamp[x] = epoch;
+                    aff[na] = x;
+                    na += 1;
+                }
+            }
+
+            var before: u32 = 0;
+            for (aff[0..na]) |x| before += contrib(nodes, &cnt, &pol, &live, x);
+            flipNode(nodes, &ref, &cnt, &pol, n, y, input_of[y], &plan, aff[0..nd]);
+            var after: u32 = 0;
+            for (aff[0..na]) |x| after += contrib(nodes, &cnt, &pol, &live, x);
+            if (after < before) {
+                improved = true;
+            } else {
+                flipNode(nodes, &ref, &cnt, &pol, n, y, input_of[y], &plan, aff[0..nd]);
+            }
+        }
+    }
+
+    // Rebuild with the chosen polarities.
+    var q = Prog{};
+    var mat: [max_nodes]u16 = undefined;
+    const get = struct {
+        inline fn f(qq: *Prog, m: []const u16, pl: []const bool, r: Ref, want: bool) u16 {
+            return if (pl[r.n] == want) m[r.n] else qq.emit(.{ .op = .not, .a = m[r.n] });
+        }
+    }.f;
+    for (nodes, 0..) |n, i| {
+        if (n.op == .not) continue;
+        if (!live[i] and n.op != .input) continue;
+        const ra = ref[n.a];
+        const rb = ref[n.b];
+        mat[i] = switch (n.op) {
+            .input, .zero, .ones => q.emit(n),
+            .not => unreachable,
+            .@"and", .@"or" => blk: {
+                const op: Op = if ((n.op == .@"and") != pol[i]) .@"and" else .@"or";
+                break :blk q.emit(.{ .op = op, .a = get(&q, &mat, &pol, ra, ra.inv != pol[i]), .b = get(&q, &mat, &pol, rb, rb.inv != pol[i]) });
+            },
+            .xor => q.emit(.{ .op = .xor, .a = mat[ra.n], .b = mat[rb.n] }),
+            .add, .add1 => q.emit(.{ .op = n.op, .a = get(&q, &mat, &pol, ra, ra.inv), .b = get(&q, &mat, &pol, rb, rb.inv) }),
+            .shl0, .shl1 => q.emit(.{ .op = if ((n.op == .shl1) != pol[i]) .shl1 else .shl0, .a = mat[ra.n] }),
+        };
+    }
+    for (0..nl) |t| {
+        const r = ref[plan.out_v[t]];
+        plan.out_v[t] = get(&q, &mat, &pol, r, r.inv != pol[in_node[t]]);
+        const u = ref[plan.out_u[t]];
+        plan.out_u[t] = mat[u.n];
+        plan.lvl_pol[t + 1] = plan.lvl_pol[t + 1] != (u.inv != pol[u.n]);
+    }
+    for (nodes, 0..) |n, i| {
+        if (n.op == .input and pol[i]) plan.inp_pol[n.a] = !plan.inp_pol[n.a];
+    }
+    plan.nodes = q.nodes;
+    plan.len = q.len;
     return plan;
 }
 
-const Planes = enum { v, u };
-const max_unary = 64;
-const Unary = struct { bits: [2 * max_unary]u16 = undefined, len: usize };
+/// Polarity of an XOR or shift given its operands' polarities.
+inline fn derivedPol(n: Node, ref: []const Ref, pol: []const bool) bool {
+    const ra = ref[n.a];
+    if (n.op == .xor) {
+        const rb = ref[n.b];
+        return (pol[ra.n] != ra.inv) != (pol[rb.n] != rb.inv);
+    }
+    return pol[ra.n] != ra.inv;
+}
+
+/// 1 if node x must be complemented for some consumer.
+inline fn contrib(nodes: []const Node, cnt: []const [2]u16, pol: []const bool, live: []const bool, x: u16) u32 {
+    switch (nodes[x].op) {
+        .zero, .ones, .not => return 0,
+        else => {},
+    }
+    if (!live[x] and nodes[x].op != .input) return 0;
+    return @intFromBool(cnt[x][@intFromBool(!pol[x])] > 0);
+}
+
+/// Flip node y's polarity (an involution: calling it twice restores state).
+inline fn flipNode(nodes: []const Node, ref: []const Ref, cnt: [][2]u16, pol: []bool, n: Node, y: u16, fed: ?u16, plan: *const Plan, derived: []const u16) void {
+    pol[y] = !pol[y];
+    if (n.op == .@"and" or n.op == .@"or") {
+        for ([2]Ref{ ref[n.a], ref[n.b] }) |r| {
+            cnt[r.n][@intFromBool(r.inv != !pol[y])] -= 1;
+            cnt[r.n][@intFromBool(r.inv != pol[y])] += 1;
+        }
+    }
+    if (fed) |t| {
+        const r = ref[plan.out_v[t]];
+        cnt[r.n][@intFromBool(r.inv != !pol[y])] -= 1;
+        cnt[r.n][@intFromBool(r.inv != pol[y])] += 1;
+    }
+    for (derived) |d| pol[d] = derivedPol(nodes[d], ref, pol);
+}
 
 /// Threshold planes and the operations the symbolic builder composes.
 const Sym = struct {
@@ -678,11 +896,10 @@ fn buildSym(s: Scheme, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool, lvl_
             covered = true;
             f = y.unaryGe(zlev.?, tau - zlev_lo + vmax);
         }
-        var u: u16 = undefined;
         var prev: u16 = undefined;
         if (covered or qn == ones or c == zero) {
             const c_or_f = if (covered) f else c;
-            u = if (lvl_pol) y.op(.not, c_or_f, 0) else c_or_f;
+            const u = if (lvl_pol) y.op(.not, c_or_f, 0) else c_or_f;
             prev = y.op(if (cin != lvl_pol) .shl1 else .shl0, u, 0);
         } else {
             // a = C and g = F (complement: a = ~F, g = ~C). The carries of
@@ -691,11 +908,10 @@ fn buildSym(s: Scheme, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool, lvl_
             const g = if (lvl_pol) y.op(.not, c, 0) else f;
             const sum = y.op(if (cin != lvl_pol) .add1 else .add, a, g);
             prev = y.op(.xor, sum, y.op(.xor, c, f));
-            u = y.op(.@"or", g, y.op(.@"and", a, prev));
             plan.chains += 1;
         }
         plan.lvl_pol[t] = lvl_pol;
-        plan.out_u[t - 1] = u;
+        plan.out_u[t - 1] = prev;
         y.uprev[t] = prev;
     }
 
@@ -755,15 +971,32 @@ pub fn derive(comptime s: Scheme) Plan {
         if (s.gap <= 0) @compileError("bitdp: gap cost must be positive");
         const cls = classes(s);
         const d = diffs(s, cls);
-        var best = buildSym(s, d, cls, false, false, false, false);
-        for ([2]bool{ false, true }) |bulk| for (0..8) |pol| {
-            const c = buildSym(s, d, cls, pol & 1 != 0, pol & 2 != 0, pol & 4 != 0, bulk);
-            if (c.cost < best.cost) best = c;
-        };
+        var cand: [24]Plan = undefined;
+        var nc: usize = 0;
+        // Plane polarities are left to minimizeNots, which searches them
+        // globally; building every polarity combination costs compile memory.
+        for ([2]bool{ false, true }) |bulk| {
+            cand[nc] = buildSym(s, d, cls, false, false, false, bulk);
+            nc += 1;
+        }
         if (d.k <= qm_max_vals and cls.n == 2) for (0..4) |pol| {
-            const c = build(s, d, cls, pol & 1 != 0, pol & 2 != 0);
-            if (c.cost < best.cost) best = c;
+            cand[nc] = build(s, d, cls, pol & 1 != 0, pol & 2 != 0);
+            nc += 1;
         };
+        // ponytail: NOT minimization costs compile time and memory, so only
+        // the three cheapest candidates get it.
+        std.mem.sort(Plan, cand[0..nc], {}, struct {
+            fn lt(_: void, a: Plan, b: Plan) bool {
+                return a.cost < b.cost;
+            }
+        }.lt);
+        var best = cand[0];
+        best.cost = std.math.maxInt(u32);
+        for (cand[0..@min(3, nc)]) |c0| {
+            var c = minimizeNots(c0);
+            c.cost = liveCost(c);
+            if (c.cost < best.cost) best = c;
+        }
         return best;
     }
 }
