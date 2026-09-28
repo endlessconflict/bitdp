@@ -25,7 +25,43 @@ pub const Scheme = struct {
     match: i32 = 0,
     mismatch: i32 = 1,
     gap: i32 = 1,
+    /// Optional substitution cost for a (pattern, text) byte pair. When set,
+    /// it replaces match/mismatch, and `alphabet` must list every byte that
+    /// can occur so the compiler can collect the distinct costs.
+    sub: ?*const fn (u8, u8) i32 = null,
+    alphabet: []const u8 = "ACGT",
+
+    pub fn cost(s: Scheme, a: u8, b: u8) i32 {
+        if (s.sub) |f| return f(a, b);
+        return if (a == b) s.match else s.mismatch;
+    }
 };
+
+pub const max_classes = 24;
+
+/// Distinct substitution costs, ascending. Class planes [cost >= c[j]] for
+/// j >= 1 are the kernel's per-text-character inputs.
+pub const Classes = struct { c: [max_classes]i32, n: u16 };
+
+fn classes(s: Scheme) Classes {
+    var r: Classes = .{ .c = undefined, .n = 0 };
+    if (s.sub == null) {
+        r.c[0] = @min(s.match, s.mismatch);
+        r.c[1] = @max(s.match, s.mismatch);
+        r.n = if (s.match == s.mismatch) 1 else 2;
+        return r;
+    }
+    for (s.alphabet) |a| for (s.alphabet) |b| {
+        const x = s.cost(a, b);
+        if (std.mem.indexOfScalar(i32, r.c[0..r.n], x) == null) {
+            if (r.n == max_classes) @compileError("bitdp: too many distinct substitution costs");
+            r.c[r.n] = x;
+            r.n += 1;
+        }
+    };
+    std.mem.sort(i32, r.c[0..r.n], {}, std.sort.asc(i32));
+    return r;
+}
 
 pub const max_vals = 32;
 // ponytail: the truth-table path is exponential in variables; it only runs
@@ -194,8 +230,7 @@ fn synth(p: *Prog, nv: u16, on: TT, dc: TT, vars: []const u16) u16 {
 const Cell = struct { dv: i32, dh: i32 };
 
 /// One DP cell with the diagonal value taken as 0: left = dv_in, up = dh_in.
-fn cell(s: Scheme, dv_in: i32, eq: bool, dh_in: i32) Cell {
-    const sub = if (eq) s.match else s.mismatch;
+fn cell(s: Scheme, dv_in: i32, sub: i32, dh_in: i32) Cell {
     const d = @min(sub, @min(dh_in + s.gap, dv_in + s.gap));
     return .{ .dv = d - dh_in, .dh = d - dv_in };
 }
@@ -204,15 +239,15 @@ const Diffs = struct { vals: [max_vals]i32, k: u16 };
 
 /// Every difference value the recurrence can produce (fixpoint from the
 /// boundary). dv and dh obey the same recurrence and boundary, so one set.
-fn diffs(s: Scheme) Diffs {
+fn diffs(s: Scheme, cls: Classes) Diffs {
     var set: [max_vals]i32 = undefined;
     set[0] = s.gap;
     var k: u16 = 1;
     var changed = true;
     while (changed) {
         changed = false;
-        for (0..k) |i| for (0..k) |j| for ([2]bool{ false, true }) |eq| {
-            const c = cell(s, set[i], eq, set[j]);
+        for (0..k) |i| for (0..k) |j| for (cls.c[0..cls.n]) |sub| {
+            const c = cell(s, set[i], sub, set[j]);
             for ([2]i32{ c.dv, c.dh }) |x| {
                 if (std.mem.indexOfScalar(i32, set[0..k], x) == null) {
                     if (k == max_vals) @compileError("bitdp: score scheme has too many distinct differences");
@@ -247,6 +282,10 @@ pub const Plan = struct {
     chains: u16,
     /// Word operations per column word, dead nodes excluded.
     cost: u32,
+    /// Substitution cost classes; kernel inputs k-1.. are [cost >= c[j]], j >= 1.
+    cls: Classes,
+    /// Class planes are stored complemented, [cost < c[j]].
+    cls_pol: bool,
     /// Which builder produced the plan.
     method: enum { truth_table, direct, merge },
 };
@@ -254,7 +293,7 @@ pub const Plan = struct {
 /// Input-variable view of one truth-table row.
 const Row = struct { valid: bool, vi: u16, eq: bool };
 
-fn decodeInput(a: u16, k: u16, in_pol: bool) Row {
+fn decodeInput(a: u16, k: u16, in_pol: bool, cls_pol: bool) Row {
     var count: u16 = 0;
     var seen_zero = false;
     var valid = true;
@@ -265,10 +304,10 @@ fn decodeInput(a: u16, k: u16, in_pol: bool) Row {
             count += 1;
         } else seen_zero = true;
     }
-    return .{ .valid = valid, .vi = count, .eq = a >> @intCast(k - 1) & 1 == 1 };
+    return .{ .valid = valid, .vi = count, .eq = (a >> @intCast(k - 1) & 1 == 1) == cls_pol };
 }
 
-fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
+fn build(s: Scheme, d: Diffs, cls: Classes, in_pol: bool, cls_pol: bool) Plan {
     @setEvalBranchQuota(1 << 30);
     const k = d.k;
     const nl = k - 1; // levels t = 1..k-1
@@ -278,7 +317,7 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
     for (1..k) |t| for (0..k) |vi| for (0..2) |e| {
         var first: ?u16 = null;
         for (0..k) |si| {
-            const g = cell(s, d.vals[vi], e == 1, d.vals[si]).dh;
+            const g = cell(s, d.vals[vi], if (e == 1) cls.c[0] else cls.c[1], d.vals[si]).dh;
             const bit = g >= d.vals[t];
             if (bit and first == null) first = @intCast(si);
             if (!bit and first != null) @compileError("bitdp: step function is not monotone");
@@ -331,7 +370,7 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
             var dc: TT = 0;
             for (0..@as(u16, 1) << @intCast(nv)) |ai| {
                 const a: u16 = @intCast(ai);
-                const row = decodeInput(a, k, in_pol);
+                const row = decodeInput(a, k, in_pol, cls_pol);
                 const bit = @as(TT, 1) << @intCast(a);
                 if (!row.valid) {
                     dc |= bit;
@@ -382,7 +421,7 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
         for (0..@as(u16, 1) << @intCast(nv)) |ai| {
             const a: u16 = @intCast(ai);
             const bit = @as(TT, 1) << @intCast(a);
-            const row = decodeInput(a, k, in_pol);
+            const row = decodeInput(a, k, in_pol, cls_pol);
             var count: u16 = 0;
             var seen_zero = false;
             var valid = row.valid;
@@ -397,17 +436,17 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
                 dc |= bit;
                 continue;
             }
-            const dv = cell(s, d.vals[row.vi], row.eq, d.vals[count]).dv;
+            const dv = cell(s, d.vals[row.vi], if (row.eq) cls.c[0] else cls.c[1], d.vals[count]).dv;
             if ((dv >= d.vals[t]) != in_pol) on |= bit;
         }
         plan.out_v[t - 1] = synth(&p, nv, on, dc, vars[0..nv]);
     }
 
-    return finish(p, plan, d, in_pol);
+    return finish(p, plan, d, cls, cls_pol, in_pol);
 }
 
 /// Fill the common Plan fields and count the word operations of live nodes.
-fn finish(p: Prog, plan0: Plan, d: Diffs, in_pol: bool) Plan {
+fn finish(p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool) Plan {
     var plan = plan0;
     const nl = d.k - 1;
     var live = [_]bool{false} ** max_nodes;
@@ -437,6 +476,8 @@ fn finish(p: Prog, plan0: Plan, d: Diffs, in_pol: bool) Plan {
     plan.len = p.len;
     plan.in_pol = in_pol;
     plan.cost = cost;
+    plan.cls = cls;
+    plan.cls_pol = cls_pol;
     return plan;
 }
 
@@ -455,7 +496,10 @@ const Sym = struct {
     uprev: [max_vals]u16 = undefined,
     zero: u16,
     ones: u16,
-    neq: u16 = undefined,
+    cls: Classes,
+    cls_pol: bool,
+    /// cpl[j] = [cost >= cls.c[j]] for j >= 1, stored complemented if cls_pol.
+    cpl: [max_classes]u16 = undefined,
 
     fn op(y: *Sym, o: Op, a: u16, b: u16) u16 {
         return y.p.emit(.{ .op = o, .a = a, .b = b });
@@ -529,9 +573,17 @@ const Sym = struct {
 
     /// [c_e >= x] and plane: all of it, only mismatch rows, or nothing.
     fn costMask(y: *Sym, x: i32, plane: u16) u16 {
-        if (y.s.match >= x) return plane;
-        if (y.s.mismatch >= x) return y.op(.@"and", y.neq, plane);
-        return y.zero;
+        return y.op(.@"and", y.costAtLeast(x), plane);
+    }
+
+    /// [c_e >= x] as a class plane or a constant.
+    fn costAtLeast(y: *Sym, x: i32) u16 {
+        const c = y.cls.c[0..y.cls.n];
+        if (x <= c[0]) return y.ones;
+        if (x > c[c.len - 1]) return y.zero;
+        var j: usize = 1;
+        while (c[j] < x) j += 1;
+        return y.maybeNot(y.cpl[j], y.cls_pol);
     }
 
     fn maybeNot(y: *Sym, x: u16, complement: bool) u16 {
@@ -539,9 +591,10 @@ const Sym = struct {
     }
 
     fn costGe(y: *Sym, which: Planes, t: i32) u16 {
-        const sm = y.ge(which, y.s.match - t + 1, false);
-        const big = y.ge(which, y.s.mismatch - t + 1, false);
-        return y.op(.@"or", sm, y.op(.@"and", y.neq, big));
+        // [c_e - x >= t] = OR over classes j of [c_e >= c_j] and [x <= c_j - t].
+        var r = y.zero;
+        for (y.cls.c[0..y.cls.n]) |c| r = y.op(.@"or", r, y.op(.@"and", y.costAtLeast(c), y.ge(which, c - t + 1, false)));
+        return r;
     }
 };
 
@@ -551,7 +604,7 @@ const Sym = struct {
 ///   [x - y >= q]     = OR over w of [x >= w] and not [y >= w - q + 1].
 /// Every level and output plane becomes a short OR of ANDs over threshold
 /// planes. Size grows like k^2 rather than 2^k, so wide score ranges work.
-fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
+fn buildSym(s: Scheme, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
     @setEvalBranchQuota(1 << 30);
     const k = d.k;
     const vals = d.vals[0..k];
@@ -561,16 +614,18 @@ fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
     plan.method = if (bulk) .merge else .direct;
     const zero = p.emit(.{ .op = .zero });
     const ones = p.emit(.{ .op = .ones });
-    var y = Sym{ .p = &p, .s = s, .vals = vals, .in_pol = in_pol, .lvl_pol = lvl_pol, .zero = zero, .ones = ones };
+    var y = Sym{ .p = &p, .s = s, .vals = vals, .in_pol = in_pol, .lvl_pol = lvl_pol, .zero = zero, .ones = ones, .cls = cls, .cls_pol = cls_pol };
     for (1..k) |t| y.xin[t] = p.emit(.{ .op = .input, .a = @intCast(t - 1) });
-    y.neq = y.op(.not, p.emit(.{ .op = .input, .a = k - 1 }), 0);
+    for (1..cls.n) |j| y.cpl[j] = p.emit(.{ .op = .input, .a = @intCast(k - 1 + j - 1) });
+    const cmin = cls.c[0];
+    const cmax = cls.c[cls.n - 1];
     const vmin = vals[0];
     const vmax = vals[k - 1];
     // Every level's terms stop depending on v once the source level reaches
     // mismatch - gap (see below), independently of the level. Levels above
     // that cap need no carry chain, and in bulk mode all of them are read
     // off one unary sum: [min(s, cap) - v >= q] for every q at once.
-    const cap = @max(s.mismatch - s.gap, vmin);
+    const cap = @max(cmax - s.gap, vmin);
     var zlev: ?Unary = null;
     var zlev_lo: i32 = 0;
 
@@ -589,7 +644,7 @@ fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
         // that, its v-condition is implied by C: the term becomes the bare
         // plane u_r, which contains every later term and the self term u_t.
         // Then the level needs no carry chain at all.
-        const bound = s.mismatch - tau;
+        const bound = cmax - tau;
         var covered = vals[0] - q >= bound;
         var qn = if (covered) ones else y.ge(.v, vals[0] - q + 1, false);
         if (!covered) for (1..t) |r| {
@@ -605,8 +660,8 @@ fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
             // dh_out = min(w' - v, gap) with w' = min(c_e, min(s, cap) + gap),
             // so the level is one bit of the unary sum of w' and -v.
             if (zlev == null) {
-                const lo: i32 = @min(s.match, vmin + s.gap);
-                const hi: i32 = @min(s.mismatch, cap + s.gap);
+                const lo: i32 = @min(cmin, vmin + s.gap);
+                const hi: i32 = @min(cmax, cap + s.gap);
                 var a: [max_unary]u16 = undefined;
                 var b: [max_unary]u16 = undefined;
                 const na: usize = @intCast(hi - lo);
@@ -655,15 +710,15 @@ fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
             // [c_e - s >= t] implies s <= mismatch - t, so once w - q reaches
             // that bound the s-condition is implied: the term is [v >= w]
             // alone, and it contains every later term.
-            const bound = s.mismatch - tau;
+            const bound = cmax - tau;
             var r = zero;
             if (bulk) {
                 // dv_out = min(w - s, gap) with w = min(c_e, v + gap), which
                 // depends on inputs only: one unary sum of w and -s gives
                 // every output plane, with no per-plane mask.
                 if (zout == null) {
-                    const lo: i32 = @min(s.match, vmin + s.gap);
-                    const hi: i32 = @min(s.mismatch, vmax + s.gap);
+                    const lo: i32 = @min(cmin, vmin + s.gap);
+                    const hi: i32 = @min(cmax, vmax + s.gap);
                     var a: [max_unary]u16 = undefined;
                     var b: [max_unary]u16 = undefined;
                     const na: usize = @intCast(hi - lo);
@@ -689,7 +744,7 @@ fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
         }
         plan.out_v[t - 1] = if (in_pol) y.op(.not, out, 0) else out;
     }
-    return finish(p, plan, d, in_pol);
+    return finish(p, plan, d, cls, cls_pol, in_pol);
 }
 
 /// Derive the cheapest plan: the symbolic builder over all plane polarities,
@@ -698,15 +753,15 @@ pub fn derive(comptime s: Scheme) Plan {
     comptime {
         @setEvalBranchQuota(1 << 30);
         if (s.gap <= 0) @compileError("bitdp: gap cost must be positive");
-        if (s.match > s.mismatch) @compileError("bitdp: match cost must not exceed mismatch cost");
-        const d = diffs(s);
-        var best = buildSym(s, d, false, false, false);
-        for ([2]bool{ false, true }) |bulk| for ([4][2]bool{ .{ false, false }, .{ false, true }, .{ true, false }, .{ true, true } }) |pol| {
-            const c = buildSym(s, d, pol[0], pol[1], bulk);
+        const cls = classes(s);
+        const d = diffs(s, cls);
+        var best = buildSym(s, d, cls, false, false, false, false);
+        for ([2]bool{ false, true }) |bulk| for (0..8) |pol| {
+            const c = buildSym(s, d, cls, pol & 1 != 0, pol & 2 != 0, pol & 4 != 0, bulk);
             if (c.cost < best.cost) best = c;
         };
-        if (d.k <= qm_max_vals) for ([2]bool{ false, true }) |in_pol| {
-            const c = build(s, d, in_pol);
+        if (d.k <= qm_max_vals and cls.n == 2) for (0..4) |pol| {
+            const c = build(s, d, cls, pol & 1 != 0, pol & 2 != 0);
             if (c.cost < best.cost) best = c;
         };
         return best;

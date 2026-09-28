@@ -12,7 +12,7 @@ pub fn scalar(s: Scheme, pattern: []const u8, text: []const u8, buf: []i64) i64 
         var diag = col[0];
         col[0] = @as(i64, @intCast(j)) * s.gap;
         for (pattern, 1..) |pc, i| {
-            const sub: i64 = if (pc == c) s.match else s.mismatch;
+            const sub: i64 = s.cost(pc, c);
             const best = @min(diag + sub, @min(col[i] + s.gap, col[i - 1] + s.gap));
             diag = col[i];
             col[i] = best;

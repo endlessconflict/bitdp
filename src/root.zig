@@ -24,8 +24,28 @@ pub fn Kernel(comptime scheme: Scheme) type {
             @setEvalBranchQuota(1 << 20);
             const m = pattern.len;
             std.debug.assert(m >= 1 and m <= 64);
-            var peq = [_]u64{0} ** 256;
-            for (pattern, 0..) |c, i| peq[c] |= @as(u64, 1) << @intCast(i);
+            // Class planes: cpl[j-1][c] has bit i set when cost(pattern[i], c) >= cls.c[j].
+            const ncp = plan.cls.n - 1;
+            var cpl: [ncp][256]u64 = @splat(@splat(0));
+            if (scheme.sub == null) {
+                if (ncp == 1) {
+                    var eq = [_]u64{0} ** 256;
+                    for (pattern, 0..) |c, i| eq[c] |= @as(u64, 1) << @intCast(i);
+                    // [cost >= c1] is "mismatch" when mismatch > match; cls_pol flips it.
+                    const want_eq = (scheme.mismatch < scheme.match) != plan.cls_pol;
+                    for (&cpl[0], eq) |*x, e| x.* = if (want_eq) e else ~e;
+                }
+            } else {
+                for (scheme.alphabet) |a| for (pattern, 0..) |c, i| {
+                    const cost = scheme.cost(c, a);
+                    inline for (0..ncp) |j| {
+                        if (cost >= plan.cls.c[j + 1]) cpl[j][a] |= @as(u64, 1) << @intCast(i);
+                    }
+                };
+                if (plan.cls_pol) for (&cpl) |*row| for (row) |*x| {
+                    x.* = ~x.*;
+                };
+            }
 
             // Column 0: every Delta-v equals gap.
             var vp: [nl]u64 = undefined;
@@ -40,7 +60,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
                 var r: [plan.len]u64 = undefined;
                 inline for (plan.nodes[0..plan.len], 0..) |n, i| {
                     r[i] = switch (n.op) {
-                        .input => if (n.a < nl) vp[n.a] else peq[c],
+                        .input => if (n.a < nl) vp[n.a] else cpl[n.a - nl][c],
                         .zero => 0,
                         .ones => ~@as(u64, 0),
                         .not => ~r[n.a],
@@ -78,8 +98,8 @@ fn checkRandom(comptime s: Scheme, pairs: usize, seed: u64) !void {
     for (0..pairs) |_| {
         const m = rnd.intRangeAtMost(usize, 1, 64);
         const n = rnd.intRangeAtMost(usize, 0, t.len);
-        for (p[0..m]) |*x| x.* = "ACGT"[rnd.int(u2)];
-        for (t[0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
+        for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+        for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
         try std.testing.expectEqual(
             reference.scalar(s, p[0..m], t[0..n], &buf),
             K.distance(p[0..m], t[0..n]),
@@ -146,4 +166,15 @@ test "BitPAl weights (2, -3, -5) as costs: exact, and cheaper than BitPAl's 265 
     try checkRandom(s, 3_000, 3);
     // 265 is the operation count Loving et al. (2014) report for these weights.
     try std.testing.expect(Kernel(s).ops < 265);
+}
+
+fn tsTv(a: u8, b: u8) i32 {
+    if (a == b) return 0;
+    const pa = a == 'A' or a == 'G';
+    const pb = b == 'A' or b == 'G';
+    return if (pa == pb) 1 else 2;
+}
+
+test "three cost classes (transition 1, transversion 2): matches the scalar oracle" {
+    try checkRandom(.{ .sub = &tsTv, .gap = 2 }, 5_000, 4);
 }

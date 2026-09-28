@@ -24,12 +24,16 @@ Early research code. What it does today, measured on one machine:
 | 0, 2, 1 (indel distance) | 2 | 1 | 8 | 2 x 10^5 pairs, bit-exact |
 | 0, 1, 2 | 5 | 1 | 30 | 2 x 10^5 pairs, bit-exact |
 | 0, 3, 2 | 5 | 3 | 63 | 2 x 10^5 pairs, bit-exact |
-| -2, 3, 5 | 13 | 5 | 190 | 10^5 pairs, bit-exact |
-| -3, 4, 6 | 16 | 7 | 267 | 10^5 pairs, bit-exact |
-| -4, 5, 9 | 23 | 9 | 414 | 10^5 pairs, bit-exact |
-| -4, 7, 11 | 27 | 11 | 528 | 10^5 pairs, bit-exact |
+| -2, 3, 5 | 13 | 5 | 189 | 10^5 pairs, bit-exact |
+| -3, 4, 6 | 16 | 7 | 266 | 10^5 pairs, bit-exact |
+| -4, 5, 9 | 23 | 9 | 413 | 10^5 pairs, bit-exact |
+| -4, 7, 11 | 27 | 11 | 527 | 10^5 pairs, bit-exact |
+| DNA: transition 1, transversion 2, gap 2 | 5 | 2 | 55 | 10^5 pairs, bit-exact |
+| BLOSUM62 costs, gap 4 | 20 | 15 | 829 | 10^5 protein pairs, bit-exact |
 
-The last four rows are the weight sets that BitPAl (Loving, Hernandez and Benson, 2014) benchmarks, written as costs. A score scheme (M, I, G) becomes costs (-M, -I, -G), which gives the same optimal alignments. For (2, -3, -5), the one set whose operation counts the BitPAl paper reports, BitPAl needs 265 operations per 64-bit word and its packed variant 166. The derived kernel needs 190, fewer than the first and still more than the second. Operation counts here include every AND, OR, XOR, NOT, shift and addition, and a + b + 1 counts as two.
+The last four rows are the weight sets that BitPAl (Loving, Hernandez and Benson, 2014) benchmarks, written as costs. A score scheme (M, I, G) becomes costs (-M, -I, -G), which gives the same optimal alignments. For (2, -3, -5), the one set whose operation counts the BitPAl paper reports, BitPAl needs 265 operations per 64-bit word and its packed variant 166. The derived kernel needs 189, fewer than the first and still more than the second. Operation counts here include every AND, OR, XOR, NOT, shift and addition, and a + b + 1 counts as two.
+
+The last two rows go beyond match and mismatch. Any integer substitution matrix works, because the cost itself becomes one more thermometer-coded input and the same threshold rules apply. However, speed is a separate matter. On a 64-residue pattern against 2 million random characters, the BitPAl-weight kernel ran 2.6 times faster than our plain scalar DP (1.96 against 0.76 GCUPS), while the BLOSUM62 kernel ran slower than it (0.56 against 0.90 GCUPS). Fifteen cost classes make the column program too long to pay off, so for protein matrices this is a correctness result for now, not a speedup.
 
 For comparison, our own implementation of Myers' hand-derived kernel uses 15 operations per column. On a 64-base pattern against a 50 Mbp random text, the derived edit-distance kernel ran at 15.6 GCUPS and our Myers implementation at 12.7 GCUPS. That is a single run on one CPU with both kernels written by us, so read it as a sanity check rather than a benchmark.
 
@@ -37,7 +41,7 @@ Current limits:
 
 - Global alignment with linear gap costs only.
 - Pattern length up to 64, one machine word.
-- Two substitution classes (match and mismatch), at most 32 distinct score differences.
+- At most 32 distinct score differences and 24 distinct substitution costs.
 - The carry-chain part still grows quadratically with the gap between match and mismatch scores, which is where BitPAl's packed variant stays ahead.
 
 ## Usage
@@ -50,6 +54,15 @@ const bitdp = @import("bitdp");
 const Edit = bitdp.Kernel(.{ .match = 0, .mismatch = 1, .gap = 1 });
 const d = Edit.distance("ACGTTGCA", "ACGTGCA"); // 1
 // Edit.ops is the derived number of word operations per column.
+
+// Any substitution cost function over a declared alphabet:
+fn tsTv(a: u8, b: u8) i32 {
+    if (a == b) return 0;
+    const pa = a == 'A' or a == 'G';
+    const pb = b == 'A' or b == 'G';
+    return if (pa == pb) 1 else 2; // transition 1, transversion 2
+}
+const TsTv = bitdp.Kernel(.{ .sub = &tsTv, .alphabet = "ACGT", .gap = 2 });
 ```
 
 ```sh
@@ -59,7 +72,7 @@ zig build mve -Doptimize=ReleaseFast   # prints derived programs, verifies, time
 
 ## Next steps
 
-Getting the carry-chain block below quadratic, affine gaps, local alignment, full substitution matrices, and patterns longer than one word.
+Getting the carry-chain block below quadratic, which is also what protein matrices need to become fast, then affine gaps, local alignment and patterns longer than one word.
 
 ## References
 
