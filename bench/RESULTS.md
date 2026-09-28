@@ -16,6 +16,6 @@ Inputs come from `gen.py`: random patterns and texts derived from them by substi
 | | tstv | 5.52 | 14.04 | 16.82 | | 5.18 | 1.98 | 8.83 |
 | 10 000 pairs, 300 aa, 30 % | blosum | 0.33 | 0.59 | 0.63 | | 2.87 | 2.19 | 5.00 |
 
-\* parasail's striped global kernels returned a different total cost than every other tool on every workload (for example 1 316 488 against 1 316 060 for edit on the 150 bp set), so they are listed but not counted as a correct baseline. bitdp, edlib and parasail's scan and diagonal kernels agree exactly on every total.
+\* parasail's striped global kernels returned a different total cost than every other tool on every workload (for example 1 316 488 against 1 316 060 for edit on the 150 bp set), so they are listed but not counted as a correct baseline. On the 150 bp edit set, `parasail_nw_striped_16` scored 426 of the 100 000 pairs below their optimum. On the first such pair it returned -17 while the scan kernel, edlib, bitdp and an independent textbook DP all give -16. bitdp, edlib and parasail's scan and diagonal kernels agree exactly on every total.
 
 The `edit` scheme uses unit costs, `bitpal` scores match 2, mismatch -3 and gap -5, `tstv` charges 1 for a transition, 2 for a transversion and 2 per gap position, and `blosum` is BLOSUM62 with gap 4. All gaps are linear.
