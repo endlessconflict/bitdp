@@ -6,12 +6,12 @@ const bitdp = @import("bitdp");
 
 fn printPlan(comptime s: bitdp.Scheme) void {
     const plan = comptime bitdp.derive(s);
-    std.debug.print("\nscheme match={d} mismatch={d} gap={d}: differences {any}, {d} ops/word, {d} carry chain(s), in_pol={}\n", .{
-        s.match, s.mismatch, s.gap, plan.vals[0..plan.k], plan.cost, plan.chains, plan.in_pol,
+    std.debug.print("\nscheme match={d} mismatch={d} gap={d}: differences {any}, {d} ops/word, {d} carry chain(s), {s}\n", .{
+        s.match, s.mismatch, s.gap, plan.vals[0..plan.k], plan.cost, plan.chains, @tagName(plan.method),
     });
-    for (plan.nodes[0..plan.len], 0..) |n, i| {
+    if (plan.len <= 40) for (plan.nodes[0..plan.len], 0..) |n, i| {
         std.debug.print("  r{d:<3} = {s:<5} {d} {d}\n", .{ i, @tagName(n.op), n.a, n.b });
-    }
+    };
     std.debug.print("  out_v {any}  out_u {any}  lvl_pol {any}\n", .{ plan.out_v[0 .. plan.k - 1], plan.out_u[0 .. plan.k - 1], plan.lvl_pol[1..plan.k] });
 }
 
@@ -37,6 +37,14 @@ fn verify(comptime s: bitdp.Scheme, pairs: usize) !void {
     std.debug.print("  verified {d} random pairs (m<=64, n<=256): bit-exact\n", .{pairs});
 }
 
+const bitpal = [_]bitdp.Scheme{
+    .{ .match = 0, .mismatch = 1, .gap = 1 },
+    .{ .match = -2, .mismatch = 3, .gap = 5 },
+    .{ .match = -3, .mismatch = 4, .gap = 6 },
+    .{ .match = -4, .mismatch = 5, .gap = 9 },
+    .{ .match = -4, .mismatch = 7, .gap = 11 },
+};
+
 fn now(io: std.Io) i96 {
     return std.Io.Timestamp.now(io, .awake).nanoseconds;
 }
@@ -47,11 +55,14 @@ pub fn main(init: std.process.Init) !void {
     printPlan(.{ .mismatch = 2 });
     printPlan(.{ .mismatch = 1, .gap = 2 });
     printPlan(.{ .mismatch = 3, .gap = 2 });
+    // BitPAl's published weight sets (score M, I, G), as costs (-M, -I, -G).
+    inline for (bitpal) |w| printPlan(w);
 
     try verify(.{}, 1_000_000);
     try verify(.{ .mismatch = 2 }, 200_000);
     try verify(.{ .mismatch = 1, .gap = 2 }, 200_000);
     try verify(.{ .mismatch = 3, .gap = 2 }, 200_000);
+    inline for (bitpal) |w| try verify(w, 100_000);
 
     // Throughput: m = 64 against a long random text.
     const gpa = init.gpa;

@@ -9,6 +9,7 @@ pub const Scheme = derive_mod.Scheme;
 pub const Plan = derive_mod.Plan;
 pub const Op = derive_mod.Op;
 pub const derive = derive_mod.derive;
+pub const derive_opcost = derive_mod.opCost;
 
 /// Global alignment cost kernel for `scheme`, pattern length 1..64.
 pub fn Kernel(comptime scheme: Scheme) type {
@@ -20,6 +21,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
         pub const levels = nl;
 
         pub fn distance(pattern: []const u8, text: []const u8) i64 {
+            @setEvalBranchQuota(1 << 20);
             const m = pattern.len;
             std.debug.assert(m >= 1 and m <= 64);
             var peq = [_]u64{0} ** 256;
@@ -137,4 +139,11 @@ test "MVE gate: derived unit-cost kernel within 1.5x of Myers' op count" {
     const K = Kernel(.{});
     try std.testing.expect(K.chains == 1);
     try std.testing.expect(2 * K.ops <= 3 * reference.myers_ops);
+}
+
+test "BitPAl weights (2, -3, -5) as costs: exact, and cheaper than BitPAl's 265 ops/word" {
+    const s: Scheme = .{ .match = -2, .mismatch = 3, .gap = 5 };
+    try checkRandom(s, 3_000, 3);
+    // 265 is the operation count Loving et al. (2014) report for these weights.
+    try std.testing.expect(Kernel(s).ops < 265);
 }

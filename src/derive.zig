@@ -13,8 +13,10 @@
 //!   * a level that copies another level is a shift plus bitwise logic.
 //!
 //! If the copy graph between distinct levels is acyclic, the whole column is
-//! a cascade of additions and bitwise logic. Every boolean function in that
-//! cascade is synthesized here from its truth table. Nothing is hand-derived.
+//! a cascade of additions and bitwise logic. Two builders produce it: exact
+//! truth-table synthesis for small difference sets, and a symbolic one that
+//! decomposes the min-plus cell into thresholds and reads most planes off
+//! unary sums computed by merging networks. Nothing is hand-derived.
 
 const std = @import("std");
 
@@ -25,12 +27,13 @@ pub const Scheme = struct {
     gap: i32 = 1,
 };
 
-// ponytail: fixed caps keep comptime cheap; 2k-1 <= 9 variables means up to
-// 5 distinct differences. Wider score ranges need a smarter synthesizer.
-pub const max_vals = 5;
-const max_vars = 2 * max_vals - 1;
+pub const max_vals = 32;
+// ponytail: the truth-table path is exponential in variables; it only runs
+// for k <= 5 distinct differences, where it sometimes beats the symbolic one.
+const qm_max_vals = 5;
+const max_vars = 2 * qm_max_vals - 1;
 const TT = std.meta.Int(.unsigned, 1 << max_vars);
-const max_nodes = 256;
+const max_nodes = 4096;
 const max_primes = 512;
 
 pub const Op = enum(u8) { input, zero, ones, not, @"and", @"or", xor, add, add1, shl0, shl1 };
@@ -51,6 +54,7 @@ pub fn opCost(op: Op) u32 {
 const Prog = struct {
     nodes: [max_nodes]Node = undefined,
     len: u16 = 0,
+    table: [table_size]u16 = [_]u16{empty} ** table_size,
 
     fn emit(p: *Prog, n0: Node) u16 {
         var n = n0;
@@ -74,14 +78,22 @@ const Prog = struct {
                 if (p.nodes[x].op == neutral) return y;
             }
         }
-        for (p.nodes[0..p.len], 0..) |m, i| {
-            if (m.op == n.op and m.a == n.a and m.b == n.b) return @intCast(i);
+        // Hash-consing: identical nodes are shared (common subexpressions).
+        var h: usize = (@as(usize, @intFromEnum(n.op)) *% 0x9e37 ^ @as(usize, n.a) *% 0x85eb ^ @as(usize, n.b) *% 0xc2b3) % table_size;
+        while (p.table[h] != empty) : (h = (h + 1) % table_size) {
+            const m = p.nodes[p.table[h]];
+            if (m.op == n.op and m.a == n.a and m.b == n.b) return p.table[h];
         }
+        if (p.len == max_nodes) @compileError("bitdp: program too large");
         p.nodes[p.len] = n;
+        p.table[h] = p.len;
         p.len += 1;
         return p.len - 1;
     }
 };
+
+const table_size = 2 * max_nodes;
+const empty = std.math.maxInt(u16);
 
 // ---------------------------------------------------------------- synthesis
 
@@ -235,6 +247,8 @@ pub const Plan = struct {
     chains: u16,
     /// Word operations per column word, dead nodes excluded.
     cost: u32,
+    /// Which builder produced the plan.
+    method: enum { truth_table, direct, merge },
 };
 
 /// Input-variable view of one truth-table row.
@@ -305,6 +319,7 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
     var var_of = [_]u16{0} ** max_vals; // level -> variable index of prev(u)
     var plan: Plan = undefined;
     plan.chains = 0;
+    plan.method = .truth_table;
 
     for (order[0..nl]) |t| {
         const top_bit = s.gap >= d.vals[t]; // row 0 holds dh = gap
@@ -388,7 +403,13 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
         plan.out_v[t - 1] = synth(&p, nv, on, dc, vars[0..nv]);
     }
 
-    // Cost of live nodes only.
+    return finish(p, plan, d, in_pol);
+}
+
+/// Fill the common Plan fields and count the word operations of live nodes.
+fn finish(p: Prog, plan0: Plan, d: Diffs, in_pol: bool) Plan {
+    var plan = plan0;
+    const nl = d.k - 1;
     var live = [_]bool{false} ** max_nodes;
     for (plan.out_v[0..nl]) |o| live[o] = true;
     for (plan.out_u[0..nl]) |o| live[o] = true;
@@ -410,9 +431,8 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
     for (p.nodes[0..p.len], 0..) |n, j| {
         if (live[j]) cost += opCost(n.op);
     }
-
     plan.vals = d.vals;
-    plan.k = k;
+    plan.k = d.k;
     plan.nodes = p.nodes;
     plan.len = p.len;
     plan.in_pol = in_pol;
@@ -420,14 +440,275 @@ fn build(s: Scheme, d: Diffs, in_pol: bool) Plan {
     return plan;
 }
 
-/// Derive the cheapest plan over both Delta-v plane polarities.
+const Planes = enum { v, u };
+const max_unary = 64;
+const Unary = struct { bits: [2 * max_unary]u16 = undefined, len: usize };
+
+/// Threshold planes and the operations the symbolic builder composes.
+const Sym = struct {
+    p: *Prog,
+    s: Scheme,
+    vals: []const i32,
+    in_pol: bool,
+    lvl_pol: bool,
+    xin: [max_vals]u16 = undefined,
+    uprev: [max_vals]u16 = undefined,
+    zero: u16,
+    ones: u16,
+    neq: u16 = undefined,
+
+    fn op(y: *Sym, o: Op, a: u16, b: u16) u16 {
+        return y.p.emit(.{ .op = o, .a = a, .b = b });
+    }
+
+    /// [x >= w] (positive) or its complement, over the Delta-v input planes
+    /// (`v`) or the previous-row state planes (`u`).
+    fn ge(y: *Sym, which: Planes, w: i32, positive: bool) u16 {
+        const k = y.vals.len;
+        if (w <= y.vals[0]) return if (positive) y.ones else y.zero;
+        if (w > y.vals[k - 1]) return if (positive) y.zero else y.ones;
+        var t: usize = 1;
+        while (y.vals[t] < w) t += 1;
+        const stored = if (which == .v) y.xin[t] else y.uprev[t];
+        const pol = if (which == .v) y.in_pol else y.lvl_pol;
+        return if (positive != pol) stored else y.op(.not, stored, 0);
+    }
+
+    /// [c_e - x >= t] = not [x >= c_e - t + 1], with c_e the match or
+    /// mismatch cost. match <= mismatch makes the match side a subset.
+    /// Batcher's odd-even merge of two descending 0/1 sequences of the same
+    /// power-of-two length. A comparator on bits is (x or y, x and y).
+    fn merge(y: *Sym, a: []const u16, b: []const u16, out: []u16) void {
+        const n = a.len;
+        if (n == 1) {
+            out[0] = y.op(.@"or", a[0], b[0]);
+            out[1] = y.op(.@"and", a[0], b[0]);
+            return;
+        }
+        var ae: [max_unary]u16 = undefined;
+        var ao: [max_unary]u16 = undefined;
+        var be: [max_unary]u16 = undefined;
+        var bo: [max_unary]u16 = undefined;
+        for (0..n / 2) |i| {
+            ae[i] = a[2 * i];
+            ao[i] = a[2 * i + 1];
+            be[i] = b[2 * i];
+            bo[i] = b[2 * i + 1];
+        }
+        var v: [2 * max_unary]u16 = undefined;
+        var w: [2 * max_unary]u16 = undefined;
+        y.merge(ae[0 .. n / 2], be[0 .. n / 2], v[0..n]);
+        y.merge(ao[0 .. n / 2], bo[0 .. n / 2], w[0..n]);
+        out[0] = v[0];
+        for (0..n - 1) |i| {
+            out[2 * i + 1] = y.op(.@"or", w[i], v[i + 1]);
+            out[2 * i + 2] = y.op(.@"and", w[i], v[i + 1]);
+        }
+        out[2 * n - 1] = w[n - 1];
+    }
+
+    /// Unary addition: given thermometer codes of two counts, the merged
+    /// sequence is the thermometer code of their sum, bit t-1 = [sum >= t].
+    fn unarySum(y: *Sym, a: []const u16, b: []const u16) Unary {
+        var n: usize = 1;
+        while (n < a.len or n < b.len) n *= 2;
+        var pa = [_]u16{y.zero} ** max_unary;
+        var pb = [_]u16{y.zero} ** max_unary;
+        @memcpy(pa[0..a.len], a);
+        @memcpy(pb[0..b.len], b);
+        var r: Unary = .{ .len = a.len + b.len };
+        y.merge(pa[0..n], pb[0..n], r.bits[0 .. 2 * n]);
+        return r;
+    }
+
+    fn unaryGe(y: *Sym, z: Unary, t: i32) u16 {
+        if (t <= 0) return y.ones;
+        if (t > z.len) return y.zero;
+        return z.bits[@intCast(t - 1)];
+    }
+
+    /// [c_e >= x] and plane: all of it, only mismatch rows, or nothing.
+    fn costMask(y: *Sym, x: i32, plane: u16) u16 {
+        if (y.s.match >= x) return plane;
+        if (y.s.mismatch >= x) return y.op(.@"and", y.neq, plane);
+        return y.zero;
+    }
+
+    fn maybeNot(y: *Sym, x: u16, complement: bool) u16 {
+        return if (complement) y.op(.not, x, 0) else x;
+    }
+
+    fn costGe(y: *Sym, which: Planes, t: i32) u16 {
+        const sm = y.ge(which, y.s.match - t + 1, false);
+        const big = y.ge(which, y.s.mismatch - t + 1, false);
+        return y.op(.@"or", sm, y.op(.@"and", y.neq, big));
+    }
+};
+
+/// Symbolic derivation by threshold decomposition of the min-plus cell
+/// d = min(c_e, s + gap, v + gap), using
+///   [min(a, b) >= t] = [a >= t] and [b >= t],
+///   [x - y >= q]     = OR over w of [x >= w] and not [y >= w - q + 1].
+/// Every level and output plane becomes a short OR of ANDs over threshold
+/// planes. Size grows like k^2 rather than 2^k, so wide score ranges work.
+fn buildSym(s: Scheme, d: Diffs, in_pol: bool, lvl_pol: bool, bulk: bool) Plan {
+    @setEvalBranchQuota(1 << 30);
+    const k = d.k;
+    const vals = d.vals[0..k];
+    var p = Prog{};
+    var plan: Plan = undefined;
+    plan.chains = 0;
+    plan.method = if (bulk) .merge else .direct;
+    const zero = p.emit(.{ .op = .zero });
+    const ones = p.emit(.{ .op = .ones });
+    var y = Sym{ .p = &p, .s = s, .vals = vals, .in_pol = in_pol, .lvl_pol = lvl_pol, .zero = zero, .ones = ones };
+    for (1..k) |t| y.xin[t] = p.emit(.{ .op = .input, .a = @intCast(t - 1) });
+    y.neq = y.op(.not, p.emit(.{ .op = .input, .a = k - 1 }), 0);
+    const vmin = vals[0];
+    const vmax = vals[k - 1];
+    // Every level's terms stop depending on v once the source level reaches
+    // mismatch - gap (see below), independently of the level. Levels above
+    // that cap need no carry chain, and in bulk mode all of them are read
+    // off one unary sum: [min(s, cap) - v >= q] for every q at once.
+    const cap = @max(s.mismatch - s.gap, vmin);
+    var zlev: ?Unary = null;
+    var zlev_lo: i32 = 0;
+
+    // Level t: u_t = [gap >= t] and [c_e - v >= t] and [s - v >= t - gap].
+    // Terms of the last factor with source level r > t are absorbed, and the
+    // r = t term has condition [v <= gap], which always holds, so
+    //   u_t = C and (Q or u_t(i-1)),  C = [gap >= t] and [c_e - v >= t],
+    // with Q the terms of levels r < t. That is a carry chain with generate
+    // F = C and Q, propagating wherever C holds.
+    for (1..k) |t| {
+        const tau = vals[t];
+        const cin = s.gap >= tau; // row 0 holds dh = gap
+        const c = if (cin) y.costGe(.v, tau) else zero;
+        const q = tau - s.gap;
+        // C implies v <= mismatch - tau. Once a term's own bound on v reaches
+        // that, its v-condition is implied by C: the term becomes the bare
+        // plane u_r, which contains every later term and the self term u_t.
+        // Then the level needs no carry chain at all.
+        const bound = s.mismatch - tau;
+        var covered = vals[0] - q >= bound;
+        var qn = if (covered) ones else y.ge(.v, vals[0] - q + 1, false);
+        if (!covered) for (1..t) |r| {
+            if (vals[r] - q >= bound) {
+                qn = y.op(.@"or", qn, y.ge(.u, vals[r], true));
+                covered = true;
+                break;
+            }
+            qn = y.op(.@"or", qn, y.op(.@"and", y.ge(.u, vals[r], true), y.ge(.v, vals[r] - q + 1, false)));
+        };
+        var f = y.op(.@"and", c, qn);
+        if (bulk and tau > cap) {
+            // dh_out = min(w' - v, gap) with w' = min(c_e, min(s, cap) + gap),
+            // so the level is one bit of the unary sum of w' and -v.
+            if (zlev == null) {
+                const lo: i32 = @min(s.match, vmin + s.gap);
+                const hi: i32 = @min(s.mismatch, cap + s.gap);
+                var a: [max_unary]u16 = undefined;
+                var b: [max_unary]u16 = undefined;
+                const na: usize = @intCast(hi - lo);
+                const nb: usize = @intCast(vmax - vmin);
+                for (0..na) |j| {
+                    const x = lo + @as(i32, @intCast(j)) + 1;
+                    const sx = if (x - s.gap <= cap) y.ge(.u, x - s.gap, true) else zero;
+                    a[j] = y.costMask(x, sx);
+                }
+                for (0..nb) |j| b[j] = y.ge(.v, vmax - @as(i32, @intCast(j)), false);
+                zlev = y.unarySum(a[0..na], b[0..nb]);
+                zlev_lo = lo;
+            }
+            covered = true;
+            f = y.unaryGe(zlev.?, tau - zlev_lo + vmax);
+        }
+        var u: u16 = undefined;
+        var prev: u16 = undefined;
+        if (covered or qn == ones or c == zero) {
+            const c_or_f = if (covered) f else c;
+            u = if (lvl_pol) y.op(.not, c_or_f, 0) else c_or_f;
+            prev = y.op(if (cin != lvl_pol) .shl1 else .shl0, u, 0);
+        } else {
+            // a = C and g = F (complement: a = ~F, g = ~C). The carries of
+            // a + g + cin are u(i-1), and sum ^ a ^ g = sum ^ (C ^ F).
+            const a = if (lvl_pol) y.op(.not, f, 0) else c;
+            const g = if (lvl_pol) y.op(.not, c, 0) else f;
+            const sum = y.op(if (cin != lvl_pol) .add1 else .add, a, g);
+            prev = y.op(.xor, sum, y.op(.xor, c, f));
+            u = y.op(.@"or", g, y.op(.@"and", a, prev));
+            plan.chains += 1;
+        }
+        plan.lvl_pol[t] = lvl_pol;
+        plan.out_u[t - 1] = u;
+        y.uprev[t] = prev;
+    }
+
+    // Output: [dv_out >= t] = [gap >= t] and [c_e - s >= t] and [v - s >= t - gap].
+    var zout: ?Unary = null;
+    var zout_lo: i32 = 0;
+    for (1..k) |t| {
+        const tau = vals[t];
+        var out = zero;
+        if (s.gap >= tau) {
+            const q = tau - s.gap;
+            // [c_e - s >= t] implies s <= mismatch - t, so once w - q reaches
+            // that bound the s-condition is implied: the term is [v >= w]
+            // alone, and it contains every later term.
+            const bound = s.mismatch - tau;
+            var r = zero;
+            if (bulk) {
+                // dv_out = min(w - s, gap) with w = min(c_e, v + gap), which
+                // depends on inputs only: one unary sum of w and -s gives
+                // every output plane, with no per-plane mask.
+                if (zout == null) {
+                    const lo: i32 = @min(s.match, vmin + s.gap);
+                    const hi: i32 = @min(s.mismatch, vmax + s.gap);
+                    var a: [max_unary]u16 = undefined;
+                    var b: [max_unary]u16 = undefined;
+                    const na: usize = @intCast(hi - lo);
+                    const nb: usize = @intCast(vmax - vmin);
+                    for (0..na) |j| {
+                        const x = lo + @as(i32, @intCast(j)) + 1;
+                        a[j] = y.costMask(x, y.ge(.v, x - s.gap, true));
+                    }
+                    for (0..nb) |j| b[j] = y.ge(.u, vmax - @as(i32, @intCast(j)), false);
+                    zout = y.unarySum(a[0..na], b[0..nb]);
+                    zout_lo = lo;
+                }
+                plan.out_v[t - 1] = y.maybeNot(y.unaryGe(zout.?, tau - zout_lo + vmax), in_pol);
+                continue;
+            } else for (vals) |w| {
+                if (w - q >= bound) {
+                    r = y.op(.@"or", r, y.ge(.v, w, true));
+                    break;
+                }
+                r = y.op(.@"or", r, y.op(.@"and", y.ge(.v, w, true), y.ge(.u, w - q + 1, false)));
+            }
+            out = y.op(.@"and", y.costGe(.u, tau), r);
+        }
+        plan.out_v[t - 1] = if (in_pol) y.op(.not, out, 0) else out;
+    }
+    return finish(p, plan, d, in_pol);
+}
+
+/// Derive the cheapest plan: the symbolic builder over all plane polarities,
+/// plus the truth-table builder when the difference set is small.
 pub fn derive(comptime s: Scheme) Plan {
     comptime {
         @setEvalBranchQuota(1 << 30);
         if (s.gap <= 0) @compileError("bitdp: gap cost must be positive");
+        if (s.match > s.mismatch) @compileError("bitdp: match cost must not exceed mismatch cost");
         const d = diffs(s);
-        const a = build(s, d, false);
-        const b = build(s, d, true);
-        return if (b.cost < a.cost) b else a;
+        var best = buildSym(s, d, false, false, false);
+        for ([2]bool{ false, true }) |bulk| for ([4][2]bool{ .{ false, false }, .{ false, true }, .{ true, false }, .{ true, true } }) |pol| {
+            const c = buildSym(s, d, pol[0], pol[1], bulk);
+            if (c.cost < best.cost) best = c;
+        };
+        if (d.k <= qm_max_vals) for ([2]bool{ false, true }) |in_pol| {
+            const c = build(s, d, in_pol);
+            if (c.cost < best.cost) best = c;
+        };
+        return best;
     }
 }
