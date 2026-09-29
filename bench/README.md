@@ -1,6 +1,6 @@
 # Benchmark
 
-Global alignment cost of every pair in a file, computed by bitdp, parasail and edlib on the same machine, the same operating system and the same input. Every tool prints the sum of all alignment costs, and a run only counts if that sum agrees with the other tools.
+Global alignment cost of every pair in a file, computed by bitdp, parasail, edlib and ksw2 on the same machine, the same operating system and the same input. Every tool prints the sum of all alignment costs, and a run only counts if that sum agrees with the other tools.
 
 ## Reproduce (Linux)
 
@@ -14,6 +14,10 @@ python3 gen.py prot300.tsv 10000 300 0.30 protein 3
 gcc -O3 -march=native baselines.c -o baselines -lparasail -ledlib -lstdc++
 ./baselines edlib edit dna150.tsv
 ./baselines scan16 bitpal dna150.tsv      # also striped16, diag16, striped_sat, scan_sat
+
+# ksw2 (inside a checkout of https://github.com/lh3/ksw2).
+gcc -O3 -march=native ksw2_baseline.c ksw2_extz2_sse.c kalloc.c -o ksw2_baseline
+./ksw2_baseline tstv dna150.tsv           # also edit, bitpal
 
 # bitdp (from the repository root).
 zig build bench -Doptimize=ReleaseFast -Dcpu=native

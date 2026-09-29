@@ -27,17 +27,19 @@ BGSA's generator produced AVX-512 BitPAl sources that do not compile (they use S
 
 Pairs from `gen.py`: random patterns, and texts derived from them by substitutions, insertions and deletions at the given divergence. With `batch`, bitdp runs one pair per SIMD lane (`Kernel.distances`), so each lane reads its own text and planes are gathered lane by lane.
 
-| Workload | Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | parasail scan16 | parasail diag16 | parasail striped16 * |
-|---|---|---|---|---|---|---|---|---|
-| 100 000 pairs, 150 bp, 10 % | edit | 5.69 | 7.75 | 7.11 | 6.19 | 2.16 | 1.66 | 5.07 |
-| | bitpal | 1.36 | 3.80 | 4.28 | | 2.18 | 1.74 | 5.11 |
-| | tstv | 3.15 | 4.70 | 4.45 | | 2.21 | 1.72 | 5.04 |
-| 5 000 pairs, 1 kbp, 15 % | edit | 18.07 | 35.20 | 34.89 | 21.73 | 5.19 | 1.98 | 8.62 |
-| | bitpal | 2.14 | 8.93 | 11.30 | | 5.18 | 2.10 | 8.76 |
-| | tstv | 8.19 | 19.23 | 20.83 | | 5.18 | 1.98 | 8.83 |
-| 10 000 pairs, 300 aa, 30 % | blosum | 0.40 | 0.77 | 0.82 | | 2.87 | 2.19 | 5.00 |
+| Workload | Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | ksw2 extz2_sse | parasail scan16 | parasail diag16 | parasail striped16 * |
+|---|---|---|---|---|---|---|---|---|---|
+| 100 000 pairs, 150 bp, 10 % | edit | 5.69 | 7.75 | 7.11 | 6.19 | 1.42 | 2.16 | 1.66 | 5.07 |
+| | bitpal | 1.36 | 3.80 | 4.28 | | 1.24 | 2.18 | 1.74 | 5.11 |
+| | tstv | 3.15 | 4.70 | 4.45 | | 0.72 | 2.21 | 1.72 | 5.04 |
+| 5 000 pairs, 1 kbp, 15 % | edit | 18.07 | 35.20 | 34.89 | 21.73 | 2.20 | 5.19 | 1.98 | 8.62 |
+| | bitpal | 2.14 | 8.93 | 11.30 | | 2.18 | 5.18 | 2.10 | 8.76 |
+| | tstv | 8.19 | 19.23 | 20.83 | | 0.94 | 5.18 | 1.98 | 8.83 |
+| 10 000 pairs, 300 aa, 30 % | blosum | 0.40 | 0.77 | 0.82 | | | 2.87 | 2.19 | 5.00 |
 
 \* parasail's striped global kernels returned a different total cost than every other tool on every workload, so they are listed but not counted as a correct baseline. On the 150 bp edit set, `parasail_nw_striped_16` scored 426 of the 100 000 pairs below their optimum. On the first such pair it returned -17 while the scan kernel, edlib, bitdp and an independent textbook DP all give -16.
+
+ksw2 is the SIMD DP of minimap2 (github.com/lh3/ksw2, commit 289609b), run through `ksw_extz2_sse` in score-only mode with gap open 0 and built by `ksw2_baseline.c` with gcc 15.2.0 (`-O3 -march=native`). It uses 128-bit SSE registers. The `tstv` run needs the `KSW_EZ_GENERIC_SC` flag, because without it ksw2 reads only the match and mismatch entries of the matrix.
 
 The Ubuntu parasail build has no AVX-512 kernels, so its fair comparison is bitdp's AVX2 column. In pairwise mode the AVX-512 build gains little over AVX2 because each lane gathers its planes separately; the previous version of the kernel, which detected carries with a 64-bit overflow compare, ran pairwise AVX-512 edit about 17 % faster (45.6 against 38 GCUPS on the 1 kbp set) and AVX2 slower.
 
