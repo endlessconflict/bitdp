@@ -43,6 +43,18 @@ ksw2 is the SIMD DP of minimap2 (github.com/lh3/ksw2, commit 289609b), run throu
 
 The Ubuntu parasail build has no AVX-512 kernels, so its fair comparison is bitdp's AVX2 column. In pairwise mode the AVX-512 build gains little over AVX2 because each lane gathers its planes separately; the previous version of the kernel, which detected carries with a 64-bit overflow compare, ran pairwise AVX-512 edit about 17 % faster (45.6 against 38 GCUPS on the 1 kbp set) and AVX2 slower.
 
+## Real reads (candidate verification)
+
+Illumina reads of *E. coli* K-12 MG1655 from ENA run ERR022075 (study PRJEB2323, Genome Analyzer IIx): the first 200 000 reads of mate 1, mapped to NC_000913.3 with bwa mem 0.7.19. Each primary alignment without clipping and without N gives one pair, the read against the reference span bwa placed it on (`reads.py`), which is the verification step of a read mapper. That leaves 193 660 pairs, all 100 bp. The reads are close to the reference: the sum of unit edit distances is 38 308, about 0.2 per read, and the sum of bwa's NM tags is 38 353. NM counts the edits of the alignment bwa chose, so it can only be at or above the edit distance.
+
+| Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | ksw2 extz2_sse | parasail scan16 |
+|---|---|---|---|---|---|---|
+| edit | 4.33 | 5.09 | 4.59 | 4.42 | 1.44 | 1.57 |
+| bitpal | 1.40 | 3.37 | 3.44 | | 1.55 | 1.60 |
+| tstv | 2.39 | 3.45 | 3.28 | | 0.82 | 1.60 |
+
+All tools give the same totals (edit 38 308, bitpal -38 540 294, tstv 65 477). Pairs this short spend a large share of their time outside the column loop (pattern preparation, reading the pair), which is why every rate is lower than on the 1 kbp set. edlib bands its DP by the edit distance it finds, so near-identical pairs favour it; batched bitdp is still ahead, by 15 %.
+
 ## Scaling of the derived programs
 
 Word operations per column as the score range grows (`zig build ablation -Dscheme=100..123`). In the first family the chained block stays at one carry chain while the number k of distinct differences grows. In the second, the spread between match and mismatch grows too, and so does the number of carry chains. The chain count equals the number of difference values at or below mismatch cost minus gap cost, as the derivation predicts.

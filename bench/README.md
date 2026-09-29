@@ -39,4 +39,12 @@ zig build scan -Doptimize=ReleaseFast -Dcpu=native
 ./zig-out/bin/bitdp-scan genome.fa 32 4 verify   # 32 guides, K = 4, check against the scalar DP
 ```
 
+Real reads (the first 200 000 reads of ENA run ERR022075 against *E. coli* K-12 MG1655, NC_000913.3):
+
+```sh
+curl -s ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR022/ERR022075/ERR022075_1.fastq.gz | gunzip -c | head -n 800000 > r1.fq
+bwa index ref.fa && bwa mem ref.fa r1.fq | samtools view -F 0x904 - | python3 reads.py ref.fa > reads.tsv
+./zig-out/bin/bitdp-bench edit bench/reads.tsv batch
+```
+
 Schemes: `edit` (unit costs), `bitpal` (score 2, -3, gap -5), `tstv` (transition 1, transversion 2, gap 2), `blosum` (BLOSUM62, gap 4). Time covers pattern preprocessing plus alignment, and excludes file reading.
