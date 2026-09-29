@@ -23,7 +23,7 @@ fn verify(comptime s: bitdp.Scheme, pairs: usize) !void {
     var p: [64]u8 = undefined;
     var t: [256]u8 = undefined;
     for (0..pairs) |_| {
-        const m = rnd.intRangeAtMost(usize, 1, 63);
+        const m = rnd.intRangeAtMost(usize, 1, 62);
         const n = rnd.intRangeAtMost(usize, 0, 256);
         for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
         for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
@@ -34,7 +34,7 @@ fn verify(comptime s: bitdp.Scheme, pairs: usize) !void {
             return error.Mismatch;
         }
     }
-    std.debug.print("  verified {d} random pairs (m<=63, n<=256): bit-exact\n", .{pairs});
+    std.debug.print("  verified {d} random pairs (m<=62, n<=256): bit-exact\n", .{pairs});
 }
 
 const bitpal = bitdp.schemes.bitpal;
@@ -44,14 +44,14 @@ fn now(io: std.Io) i96 {
     return std.Io.Timestamp.now(io, .awake).nanoseconds;
 }
 
-/// Derived kernel vs the plain scalar DP (our unvectorized oracle), m = 63.
+/// Derived kernel vs the plain scalar DP (our unvectorized oracle), m = 62.
 fn vsScalar(io: std.Io, gpa: std.mem.Allocator, comptime s: bitdp.Scheme, name: []const u8) !void {
     const n: usize = 2_000_000;
     const text = try gpa.alloc(u8, n);
     defer gpa.free(text);
     var prng = std.Random.DefaultPrng.init(11);
     for (text) |*x| x.* = s.alphabet[prng.random().uintLessThan(usize, s.alphabet.len)];
-    const pat = text[5000..5063];
+    const pat = text[5000..5062];
     var buf: [65]i64 = undefined;
     var t0 = now(io);
     const a = bitdp.reference.scalar(s, pat, text, &buf);
@@ -60,7 +60,7 @@ fn vsScalar(io: std.Io, gpa: std.mem.Allocator, comptime s: bitdp.Scheme, name: 
     const b = bitdp.Kernel(s).distance(pat, text);
     const t_derived = now(io) - t0;
     if (a != b) return error.Mismatch;
-    const cells: f64 = @floatFromInt(63 * n);
+    const cells: f64 = @floatFromInt(62 * n);
     std.debug.print("{s}: scalar {d:.2} GCUPS, derived {d:.2} GCUPS ({d} ops/word)\n", .{
         name, cells / @as(f64, @floatFromInt(t_scalar)), cells / @as(f64, @floatFromInt(t_derived)), bitdp.Kernel(s).ops,
     });
@@ -90,7 +90,7 @@ pub fn main(init: std.process.Init) !void {
     defer gpa.free(text);
     var prng = std.Random.DefaultPrng.init(7);
     for (text) |*x| x.* = "ACGT"[prng.random().int(u2)];
-    const pat = text[1000..1063];
+    const pat = text[1000..1062];
     const K = bitdp.Kernel(.{});
 
     var t0 = now(io);
@@ -102,10 +102,10 @@ pub fn main(init: std.process.Init) !void {
     std.mem.doNotOptimizeAway(a);
     std.mem.doNotOptimizeAway(b);
     if (a != b) return error.Mismatch;
-    const cells: f64 = @floatFromInt(63 * n);
+    const cells: f64 = @floatFromInt(62 * n);
     try vsScalar(io, gpa, bitpal[1], "BitPAl (2,-3,-5)");
     try vsScalar(io, gpa, general[1], "BLOSUM62, gap 4");
-    std.debug.print("\nthroughput m=63 n={d}: myers {d:.2} GCUPS, derived {d:.2} GCUPS (ops: myers {d}, derived {d})\n", .{
+    std.debug.print("\nthroughput m=62 n={d}: myers {d:.2} GCUPS, derived {d:.2} GCUPS (ops: myers {d}, derived {d})\n", .{
         n,
         cells / @as(f64, @floatFromInt(t_myers)),
         cells / @as(f64, @floatFromInt(t_derived)),

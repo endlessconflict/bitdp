@@ -20,4 +20,12 @@ zig build bench -Doptimize=ReleaseFast -Dcpu=native
 ./zig-out/bin/bitdp-bench bitpal bench/dna150.tsv
 ```
 
+All against all, as BGSA runs it (one sequence per line, all of the same length):
+
+```sh
+./zig-out/bin/bitdp-bench edit ava queries.txt subjects.txt
+# BGSA: generate a kernel (java -jar generator.jar -m 0 -a avx2), build with make cc=gcc, then
+./aligner -q queries.txt -d subjects.txt -f result.txt -N 1
+```
+
 Schemes: `edit` (unit costs), `bitpal` (score 2, -3, gap -5), `tstv` (transition 1, transversion 2, gap 2), `blosum` (BLOSUM62, gap 4). Time covers pattern preprocessing plus alignment, and excludes file reading.

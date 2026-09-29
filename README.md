@@ -39,27 +39,20 @@ Rows five to eight are the weight sets that BitPAl (Loving, Hernandez and Benson
 
 ## Speed
 
-Measured against edlib and parasail on one core of a Ryzen 7 8840U, all tools on the same inputs, with every tool's total cost checked against the others. Billions of DP cells per second (median of three runs):
+All numbers are from one core of a Ryzen 7 8840U, with every tool's total cost checked against the others; [bench/RESULTS.md](bench/RESULTS.md) has the full tables and [bench/README.md](bench/README.md) the way to reproduce them.
 
-| Workload | Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | parasail (fastest correct kernel) |
-|---|---|---|---|---|---|---|
-| 150 bp, 10 % divergence | edit | 7.43 | 10.47 | 9.67 | 6.19 | 2.16 |
-| | bitpal | 0.91 | 4.35 | 5.51 | | 2.18 |
-| | tstv | 2.34 | 3.59 | 3.69 | | 2.21 |
-| 1 kbp, 15 % divergence | edit | 18.23 | 30.70 | 50.44 | 21.73 | 5.19 |
-| | bitpal | 1.16 | 7.29 | 11.59 | | 5.18 |
-| | tstv | 5.52 | 14.04 | 16.82 | | 5.18 |
-| 300 aa, 30 % divergence | blosum | 0.33 | 0.59 | 0.63 | | 2.87 |
+The closest tool is BGSA, which runs Myers' and BitPAl's hand-derived kernels with one alignment per SIMD lane. In its own setting (all queries against all subjects of equal length) and at the same vector width, the derived kernels land close to it. For edit distance, bitdp reaches 0.73 to 0.93 of BGSA's speed with AVX2 and 0.90 to 1.20 with AVX-512. On BitPAl's (2, -3, -5) weights with AVX2, bitdp ties or beats BGSA's standard BitPAl (8.6 against 8.6 and 11.7 against 9.2 GCUPS) and trails its packed variant (8.6 against 13.0 and 11.7 against 14.0). Schemes BGSA cannot express still run at the same order of speed, for example 45.8 GCUPS with AVX2 for transition/transversion costs on 1 kbp sequences.
 
-The lane columns run one alignment per SIMD lane through `Kernel.distances`. The Ubuntu parasail build has no AVX-512 kernels, so the AVX2 column is the like-for-like comparison. On DNA, batched bitdp is faster than every correct baseline in the table. On BLOSUM62 it is several times slower than parasail: fifteen cost classes make the column program too long to pay off.
+On independent pairs, where each lane has its own text, batched bitdp is faster than edlib and than parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). For BLOSUM62 it is several times slower than parasail, since fifteen cost classes make the column program too long to pay off.
 
-parasail's striped global kernels, which would otherwise be its fastest, returned a different total cost than every other tool on every workload, so they are left out of the comparison. [bench/RESULTS.md](bench/RESULTS.md) has all numbers, including them, and [bench/README.md](bench/README.md) explains how to reproduce the run.
+parasail's striped global kernels, which would otherwise be its fastest, scored some pairs below their optimum (426 of 100 000 on one workload), so the comparison leaves them out.
 
 ## Limits
 
 - Global alignment with linear gap costs only. With affine gaps the value carried down a column can shift both up and down between thresholds, the copy graph acquires cycles, and the cascade above no longer applies.
 - At most 32 distinct score differences and 24 distinct substitution costs.
 - The carry-chain part still grows quadratically with the spread between substitution costs. This is where BitPAl's packed variant stays ahead, and why protein matrices are slow.
+- Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
 - Deriving a scheme happens inside the Zig compiler. Small schemes take seconds, while BLOSUM62 takes about 20 seconds and 1.5 GB of compiler memory.
 
 ## Usage
@@ -71,7 +64,7 @@ const bitdp = @import("bitdp");
 
 const Edit = bitdp.Kernel(.{ .match = 0, .mismatch = 1, .gap = 1 });
 
-// Patterns up to 63 characters, no allocation.
+// Patterns up to 62 characters, no allocation.
 const d = Edit.distance("ACGTTGCA", "ACGTGCA"); // 1
 
 // Any pattern length: prepare it once, align it against many texts.
@@ -81,6 +74,11 @@ const d2 = a.distance(text);
 
 // Many pairs, one per SIMD lane.
 try Edit.distances(gpa, patterns, texts, out);
+
+// Up to Edit.lanes patterns against the same text, one per lane.
+var g = try Edit.Group.init(gpa, subjects);
+defer g.deinit(gpa);
+const costs = g.distances(query);
 
 // Any substitution cost function over a declared alphabet.
 const TsTv = bitdp.Kernel(bitdp.schemes.ts_tv);

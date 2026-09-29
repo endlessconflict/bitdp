@@ -31,9 +31,9 @@ pub fn Kernel(comptime scheme: Scheme) type {
 
             pub fn init(gpa: std.mem.Allocator, pattern: []const u8) !Aligner {
                 std.debug.assert(pattern.len >= 1);
-                // One spare bit: the bottom row's state is read at bit m.
-                const words = pattern.len / 64 + 1;
-                const cpl = try gpa.alloc(u64, ncp * 256 * words);
+                // One spare row: the bottom row's state is read at row m.
+                const words = pattern.len / rows + 1;
+                const cpl = try gpa.alloc(u64, plane_words * words);
                 errdefer gpa.free(cpl);
                 fillPlanes(pattern, words, cpl);
                 return .{ .m = pattern.len, .words = words, .cpl = cpl, .vp = try gpa.alloc(@Vector(1, u64), nl * words) };
@@ -45,21 +45,61 @@ pub fn Kernel(comptime scheme: Scheme) type {
             }
 
             pub fn distance(a: *Aligner, text: []const u8) i64 {
-                return columns(1, null, a.words, .{a.m}, .{a.cpl}, a.vp, .{text})[0];
+                return columns(1, false, null, a.words, .{a.m}, .{a.cpl}, &.{}, a.vp, .{text})[0];
             }
         };
 
-        /// Pattern length 1..63, one machine word, no allocation.
+        /// Pattern length 1..62, one machine word, no allocation.
         pub fn distance(pattern: []const u8, text: []const u8) i64 {
-            std.debug.assert(pattern.len >= 1 and pattern.len <= 63);
-            var cpl: [ncp * 256]u64 = undefined;
+            std.debug.assert(pattern.len >= 1 and pattern.len < rows);
+            var cpl: [plane_words]u64 = undefined;
             var vp: [nl]@Vector(1, u64) = undefined;
             fillPlanes(pattern, 1, &cpl);
-            return columns(1, 1, 1, .{pattern.len}, .{&cpl}, &vp, .{text})[0];
+            return columns(1, false, 1, 1, .{pattern.len}, .{&cpl}, &.{}, &vp, .{text})[0];
         }
 
-        /// SIMD lanes used by `distances`: one independent alignment per lane.
+        /// SIMD lanes: one independent alignment per lane.
         pub const lanes = std.simd.suggestVectorLength(u64) orelse 4;
+        const V = @Vector(lanes, u64);
+
+        /// Up to `lanes` patterns prepared once, aligned together against a
+        /// shared text: every lane reads the same text character, so each
+        /// input plane is one vector load.
+        pub const Group = struct {
+            words: usize,
+            ms: [lanes]usize,
+            planes: []V,
+            vp: []V,
+
+            pub fn init(gpa: std.mem.Allocator, patterns: []const []const u8) !Group {
+                std.debug.assert(patterns.len >= 1 and patterns.len <= lanes);
+                var g: Group = .{ .words = 1, .ms = undefined, .planes = undefined, .vp = undefined };
+                for (0..lanes) |l| {
+                    g.ms[l] = patterns[@min(l, patterns.len - 1)].len; // pad with the last pattern
+                    g.words = @max(g.words, g.ms[l] / rows + 1);
+                }
+                g.planes = try gpa.alloc(V, plane_words * g.words);
+                errdefer gpa.free(g.planes);
+                const one = try gpa.alloc(u64, plane_words * g.words);
+                defer gpa.free(one);
+                inline for (0..lanes) |l| {
+                    fillPlanes(patterns[@min(l, patterns.len - 1)], g.words, one);
+                    for (g.planes, one) |*v, x| v[l] = x;
+                }
+                g.vp = try gpa.alloc(V, nl * g.words);
+                return g;
+            }
+
+            pub fn deinit(g: *Group, gpa: std.mem.Allocator) void {
+                gpa.free(g.planes);
+                gpa.free(g.vp);
+            }
+
+            /// Cost of every pattern in the group against `text`.
+            pub fn distances(g: *Group, text: []const u8) [lanes]i64 {
+                return columns(lanes, true, null, g.words, g.ms, undefined, g.planes, g.vp, @splat(text));
+            }
+        };
 
         /// Costs of many (pattern, text) pairs, `lanes` pairs at a time: each
         /// SIMD lane runs the same derived program on its own alignment.
@@ -75,49 +115,52 @@ pub fn Kernel(comptime scheme: Scheme) type {
                     const i = @min(start + l, patterns.len - 1); // pad the tail with the last pair
                     ms[l] = patterns[i].len;
                     ts[l] = texts[i];
-                    words = @max(words, ms[l] / 64 + 1);
+                    words = @max(words, ms[l] / rows + 1);
                 }
-                const buf = try gpa.alloc(u64, lanes * ncp * 256 * words);
+                const buf = try gpa.alloc(u64, lanes * plane_words * words);
                 defer gpa.free(buf);
-                const vp = try gpa.alloc(@Vector(lanes, u64), nl * words);
+                const vp = try gpa.alloc(V, nl * words);
                 defer gpa.free(vp);
                 var cpls: [lanes][]const u64 = undefined;
                 for (0..lanes) |l| {
-                    const slot = buf[l * ncp * 256 * words ..][0 .. ncp * 256 * words];
-                    fillPlanes(patterns[@min(start + l, patterns.len - 1)], words, slot);
-                    cpls[l] = slot;
+                    const mine = buf[l * plane_words * words ..][0 .. plane_words * words];
+                    fillPlanes(patterns[@min(start + l, patterns.len - 1)], words, mine);
+                    cpls[l] = mine;
                 }
-                const r = columns(lanes, null, words, ms, cpls, vp, ts);
+                const r = columns(lanes, false, null, words, ms, cpls, &.{}, vp, ts);
                 for (0..@min(lanes, patterns.len - start)) |l| out[start + l] = r[l];
             }
         }
 
-        /// Class planes: word w of plane j for text byte c is at
-        /// (j * 256 + c) * words + w; bit i set when cost(pattern[i], c) >= cls.c[j+1].
+        /// Pattern rows per 64-bit word. Bit 63 is left as a carry catcher: the
+        /// carry out of rows 0..62 is ((a + b) ^ a ^ b) >> 63 whatever bit 63
+        /// holds, which costs three instructions where a full 64-bit carry-out
+        /// would need an emulated unsigned compare on most SIMD units.
+        const rows = 63;
+
+        /// Text bytes map to slots: one per alphabet character, plus one for
+        /// every other byte, which counts as the costliest substitution.
+        const nslot = scheme.alphabet.len + 1;
+        const slot_of: [256]u8 = blk: {
+            var t = [_]u8{scheme.alphabet.len} ** 256;
+            for (scheme.alphabet, 0..) |c, i| t[c] = i;
+            break :blk t;
+        };
+        const plane_words = ncp * nslot;
+
+        /// Class planes of one pattern: word w of plane j for text slot s is at
+        /// (j * nslot + s) * words + w, with bit i set when the cost of pattern[i]
+        /// against that slot's character is at least cls.c[j+1].
         fn fillPlanes(pattern: []const u8, words: usize, cpl: []u64) void {
             @memset(cpl, 0);
-            if (ncp == 0) return;
-            const bit = struct {
-                fn f(i: usize) u64 {
-                    return @as(u64, 1) << @intCast(i % 64);
+            for (0..nslot) |s| for (pattern, 0..) |c, i| {
+                const cost = if (s < scheme.alphabet.len) scheme.cost(c, scheme.alphabet[s]) else plan.cls.c[plan.cls.n - 1];
+                inline for (0..ncp) |j| {
+                    if (cost >= plan.cls.c[j + 1]) cpl[(j * nslot + s) * words + i / rows] |= @as(u64, 1) << @intCast(i % rows);
                 }
-            }.f;
-            if (scheme.sub == null) {
-                for (pattern, 0..) |c, i| cpl[@as(usize, c) * words + i / 64] |= bit(i);
-                // That marked equal bytes. [cost >= c1] means "mismatch" when mismatch > match.
-                if (scheme.mismatch > scheme.match) for (cpl) |*x| {
-                    x.* = ~x.*;
-                };
-            } else {
-                for (scheme.alphabet) |a| for (pattern, 0..) |c, i| {
-                    const cost = scheme.cost(c, a);
-                    inline for (0..ncp) |j| {
-                        if (cost >= plan.cls.c[j + 1]) cpl[(j * 256 + a) * words + i / 64] |= bit(i);
-                    }
-                };
-            }
+            };
             inline for (0..ncp) |j| {
-                if (plan.inp_pol[nl + j]) for (cpl[j * 256 * words ..][0 .. 256 * words]) |*x| {
+                if (plan.inp_pol[nl + j]) for (cpl[j * nslot * words ..][0 .. nslot * words]) |*x| {
                     x.* = ~x.*;
                 };
             }
@@ -127,51 +170,63 @@ pub fn Kernel(comptime scheme: Scheme) type {
         /// lanes of a vector. Within a column the derived program runs word by
         /// word, low rows first; additions pass their carry and shifts their
         /// top bit on to the next word. A lane stops scoring once its text ends.
+        /// Class planes come per lane (`cpls`) or, when every lane reads the
+        /// same text (`shared`), pre-interleaved (`gplanes`).
         fn columns(
             comptime L: usize,
+            comptime shared: bool,
             comptime ct_words: ?usize,
             rt_words: usize,
             ms: [L]usize,
             cpls: [L][]const u64,
+            gplanes: []const @Vector(L, u64),
             vp: []@Vector(L, u64),
             texts: [L][]const u8,
         ) [L]i64 {
             @setEvalBranchQuota(1 << 20);
-            const V = @Vector(L, u64);
+            const W = @Vector(L, u64);
             const S = @Vector(L, i64);
             const words = ct_words orelse rt_words;
-            const ones: V = @splat(~@as(u64, 0));
-            const zeros: V = @splat(0);
+            const ones: W = @splat(~@as(u64, 0));
+            const zeros: W = @splat(0);
             for (0..nl) |t| {
                 const bit = scheme.gap >= plan.vals[t + 1];
                 @memset(vp[t * words ..][0..words], if (bit != plan.inp_pol[t]) ones else zeros);
             }
-            var score_word: V = undefined;
+            var score_word: W = undefined;
             var shift: @Vector(L, u6) = undefined;
             var score: S = undefined;
             var n_max: usize = 0;
+            var sw_min: usize = std.math.maxInt(usize);
+            var sw_max: usize = 0;
             inline for (0..L) |l| {
-                score_word[l] = ms[l] / 64;
-                shift[l] = @intCast(ms[l] % 64);
+                score_word[l] = ms[l] / rows;
+                shift[l] = @intCast(ms[l] % rows);
+                sw_min = @min(sw_min, ms[l] / rows);
+                sw_max = @max(sw_max, ms[l] / rows);
                 score[l] = @as(i64, @intCast(ms[l])) * scheme.gap;
                 n_max = @max(n_max, texts[l].len);
             }
             for (0..n_max) |j| {
                 var cs: [L]usize = undefined;
-                var active: @Vector(L, bool) = undefined;
-                inline for (0..L) |l| {
+                var active: @Vector(L, bool) = @splat(true);
+                if (shared) {
+                    cs[0] = slot_of[texts[0][j]];
+                } else inline for (0..L) |l| {
                     active[l] = j < texts[l].len;
-                    cs[l] = if (active[l]) texts[l][j] else 0;
+                    cs[l] = if (active[l]) slot_of[texts[l][j]] else 0;
                 }
-                var carry: [plan.len]V = undefined;
-                var top: [plan.len]V = undefined;
+                var carry: [plan.len]W = undefined;
+                var top: [plan.len]W = undefined;
                 for (0..words) |w| {
-                    var r: [plan.len]V = undefined;
+                    var r: [plan.len]W = undefined;
                     inline for (plan.nodes[0..plan.len], 0..) |n, i| {
                         r[i] = switch (n.op) {
-                            .input => if (n.a < nl) vp[n.a * words + w] else blk: {
-                                var x: V = undefined;
-                                inline for (0..L) |l| x[l] = cpls[l][((n.a - nl) * 256 + cs[l]) * words + w];
+                            .input => if (n.a < nl) vp[n.a * words + w] else if (shared)
+                                gplanes[((n.a - nl) * nslot + cs[0]) * words + w]
+                            else blk: {
+                                var x: W = undefined;
+                                inline for (0..L) |l| x[l] = cpls[l][((n.a - nl) * nslot + cs[l]) * words + w];
                                 break :blk x;
                             },
                             .zero => zeros,
@@ -181,28 +236,25 @@ pub fn Kernel(comptime scheme: Scheme) type {
                             .@"or" => r[n.a] | r[n.b],
                             .xor => r[n.a] ^ r[n.b],
                             .add, .add1 => blk: {
-                                const cin: V = if (w == 0) @splat(@intFromBool(n.op == .add1)) else carry[i];
-                                const s1 = @addWithOverflow(r[n.a], r[n.b]);
-                                const s2 = @addWithOverflow(s1[0], cin);
-                                const c1: V = s1[1];
-                                const c2: V = s2[1];
-                                carry[i] = c1 | c2;
-                                break :blk s2[0];
+                                const cin: W = if (w == 0) @splat(@intFromBool(n.op == .add1)) else carry[i];
+                                const sum = r[n.a] +% r[n.b] +% cin;
+                                carry[i] = (sum ^ r[n.a] ^ r[n.b]) >> @splat(rows);
+                                break :blk sum;
                             },
                             .shl0, .shl1 => blk: {
-                                const fill: V = if (w == 0) @splat(@intFromBool(n.op == .shl1)) else top[i];
-                                top[i] = r[n.a] >> @splat(63);
+                                const fill: W = if (w == 0) @splat(@intFromBool(n.op == .shl1)) else top[i];
+                                top[i] = (r[n.a] >> @splat(rows - 1)) & @as(W, @splat(1));
                                 break :blk (r[n.a] << @splat(1)) | fill;
                             },
                         };
                     }
-                    // Bottom-row state, read at bit m of the lanes whose m falls in this word.
-                    const here = score_word == @as(V, @splat(w));
-                    if (@reduce(.Or, here)) {
+                    // Bottom-row state, read at row m of the lanes whose m falls in this word.
+                    if (w >= sw_min and w <= sw_max) {
+                        const here = score_word == @as(W, @splat(w));
                         var inc: S = @splat(plan.vals[0]);
                         inline for (0..nl) |t| {
-                            const pol: V = @splat(@intFromBool(plan.lvl_pol[t + 1]));
-                            const bit: S = @intCast(((r[plan.out_u[t]] >> shift) & @as(V, @splat(1))) ^ pol);
+                            const pol: W = @splat(@intFromBool(plan.lvl_pol[t + 1]));
+                            const bit: S = @intCast(((r[plan.out_u[t]] >> shift) & @as(W, @splat(1))) ^ pol);
                             inc += bit * @as(S, @splat(plan.vals[t + 1] - plan.vals[t]));
                         }
                         score += @select(i64, @select(bool, here, active, @as(@Vector(L, bool), @splat(false))), inc, @as(S, @splat(0)));
@@ -225,7 +277,7 @@ fn checkRandom(comptime s: Scheme, pairs: usize, seed: u64) !void {
     var p: [64]u8 = undefined;
     var t: [200]u8 = undefined;
     for (0..pairs) |_| {
-        const m = rnd.intRangeAtMost(usize, 1, 63);
+        const m = rnd.intRangeAtMost(usize, 1, 62);
         const n = rnd.intRangeAtMost(usize, 0, t.len);
         for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
         for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
@@ -343,5 +395,32 @@ test "batched SIMD lanes match the scalar oracle (mixed lengths)" {
         var out: [count]i64 = undefined;
         try K.distances(gpa, &ps, &ts, &out);
         for (0..count) |i| try std.testing.expectEqual(reference.scalar(s, ps[i], ts[i], &buf), out[i]);
+    }
+}
+
+test "groups: several patterns against one shared text match the scalar oracle" {
+    const gpa = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(8);
+    const rnd = prng.random();
+    var buf: [301]i64 = undefined;
+    inline for ([_]Scheme{ .{}, schemes.ts_tv }) |s| {
+        const K = Kernel(s);
+        var store: [K.lanes][300]u8 = undefined;
+        var ps: [K.lanes][]const u8 = undefined;
+        for (0..20) |_| {
+            const count = rnd.intRangeAtMost(usize, 1, K.lanes);
+            for (0..count) |i| {
+                const m = rnd.intRangeAtMost(usize, 1, 300);
+                for (store[i][0..m]) |*x| x.* = "ACGTN"[rnd.intRangeLessThan(usize, 0, 5)];
+                ps[i] = store[i][0..m];
+            }
+            var text: [300]u8 = undefined;
+            const n = rnd.intRangeAtMost(usize, 0, 300);
+            for (text[0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
+            var g = try K.Group.init(gpa, ps[0..count]);
+            defer g.deinit(gpa);
+            const r = g.distances(text[0..n]);
+            for (0..count) |i| try std.testing.expectEqual(reference.scalar(s, ps[i], text[0..n], &buf), r[i]);
+        }
     }
 }
