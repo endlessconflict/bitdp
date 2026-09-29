@@ -2,7 +2,7 @@
 
 Bit-parallel sequence alignment kernels that Zig derives at compile time from the scoring scheme you give it.
 
-Fast bit-vector aligners exist, but each one was worked out by hand for one cost model. Myers did it for unit edit costs in 1999, and BitPAl later built a family of constructions for linear-gap integer weights. However, if your scheme falls outside what someone already derived, you are back to the scalar dynamic program. bitdp takes the recurrence itself and produces the bit-parallel program with `comptime`, so a new scheme costs a recompile instead of a paper.
+Fast bit-vector aligners exist, but each one was worked out by hand for one cost model. Myers did it for unit edit costs in 1999, and BitPAl later designed a construction for linear-gap match, mismatch and gap weights that its generator instantiates per weight set. However, if your scheme falls outside what someone already derived, you are back to the scalar dynamic program. bitdp takes the recurrence itself and produces the bit-parallel program with `comptime`, so a new scheme costs a recompile instead of a paper.
 
 ## How it works
 
