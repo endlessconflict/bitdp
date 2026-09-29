@@ -101,7 +101,18 @@ Word operations per column with parts of the compiler switched off (`zig build a
 | bitdp, 4 lanes AVX2 | 78 | 0.36 s | 8.29 |
 | plain scalar DP (the correctness check) | 78 | 13.3 s | 0.22 |
 
-The hit lists agree guide by guide. A 20 nt guide fills only 20 of the 63 rows of a word, which is why the rate is well below the long-pattern numbers; packing several guides into one word is the obvious improvement. The scalar DP here is the plain reference loop, not an optimized aligner.
+The hit lists agree guide by guide. The scalar DP here is the plain reference loop, not an optimized aligner.
+
+A 20 nt guide fills only 20 of the 63 rows of a word. `Kernel.Packed` puts three guides in each lane word, each followed by a spacer row where additions and shifts see forced bits, so every guide starts from the row-0 boundary; the scores live in bit fields of one accumulator word per lane. Same genome, scheme and K, medians of three runs (`bitdp-scan ref.fa N 4 [packed]`):
+
+| Build | Guides | Hits | One guide per lane | Three guides per lane |
+|---|---|---|---|---|
+| AVX-512, 8 lanes | 48 | 128 | 0.374 s, 11.9 GCUPS | 0.165 s, 27.0 GCUPS |
+| | 96 | 306 | 0.748 s, 11.9 GCUPS | 0.329 s, 27.1 GCUPS |
+| AVX2, 4 lanes | 48 | 128 | 0.547 s, 8.1 GCUPS | 0.227 s, 19.7 GCUPS |
+| | 96 | 306 | 1.119 s, 8.0 GCUPS | 0.464 s, 19.2 GCUPS |
+
+The packed hits match the unpacked ones, and on 48 guides the scalar DP (128 hits, 20.6 s). Packing is 2.3 to 2.4 times faster rather than 3 times because each column also pays for the spacer masks (one or two operations per addition and shift) and for reading three score fields.
 
 ## Schemes
 

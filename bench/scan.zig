@@ -2,7 +2,9 @@
 //! genome in search mode with transition/transversion costs, reporting every
 //! end position with cost <= K. Hits are checked against the scalar DP.
 //!
-//! usage: bitdp-scan GENOME.fa GUIDES K [verify]
+//! usage: bitdp-scan GENOME.fa GUIDES K [verify] [packed]
+//!
+//! With "packed", three guides share each lane word (Kernel.Packed).
 
 const std = @import("std");
 const bitdp = @import("bitdp");
@@ -23,7 +25,12 @@ pub fn main(init: std.process.Init) !void {
     const raw = try std.Io.Dir.cwd().readFileAlloc(io, args[1], gpa, .unlimited);
     const nguides = try std.fmt.parseInt(usize, args[2], 10);
     const max_cost = try std.fmt.parseInt(i64, args[3], 10);
-    const verify = args.len > 4;
+    var verify = false;
+    var pack = false;
+    for (args[4..]) |a| {
+        if (std.mem.eql(u8, a, "verify")) verify = true;
+        if (std.mem.eql(u8, a, "packed")) pack = true;
+    }
 
     // FASTA: drop header lines and newlines, upper-case.
     var genome: std.ArrayList(u8) = .empty;
@@ -51,6 +58,15 @@ pub fn main(init: std.process.Init) !void {
     @memset(by_guide, 0);
     const t0 = now(io);
     var start: usize = 0;
+    const slices = try gpa.alloc([]const u8, nguides);
+    for (slices, guides) |*sl, *gd| sl.* = gd;
+    while (pack and start < nguides) {
+        const pk = Kn.Packed.init(slices[start..]);
+        hits.clearRetainingCapacity();
+        try pk.scan(gpa, g, max_cost, &hits);
+        for (hits.items) |h| by_guide[start + h.lane] += 1;
+        start += pk.count;
+    }
     while (start < nguides) : (start += Kn.lanes) {
         const count = @min(Kn.lanes, nguides - start);
         var ps: [Kn.lanes][]const u8 = undefined;
@@ -68,8 +84,8 @@ pub fn main(init: std.process.Init) !void {
     var reported: usize = 0;
     for (by_guide) |x| reported += x;
     const cells = @as(f64, @floatFromInt(g.len)) * guide_len * @as(f64, @floatFromInt(nguides));
-    std.debug.print("genome {d} bp, {d} guides x {d} nt, K={d}, lanes={d}: {d} hits in {d:.3} s, {d:.2} GCUPS\n", .{
-        g.len, nguides, guide_len, max_cost, Kn.lanes, reported, sec, cells / sec * 1e-9,
+    std.debug.print("genome {d} bp, {d} guides x {d} nt, K={d}, lanes={d}{s}: {d} hits in {d:.3} s, {d:.2} GCUPS\n", .{
+        g.len, nguides, guide_len, max_cost, Kn.lanes, if (pack) " packed" else "", reported, sec, cells / sec * 1e-9,
     });
 
     if (!verify) return;

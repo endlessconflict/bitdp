@@ -112,6 +112,173 @@ pub fn Kernel(comptime scheme: Scheme) type {
             }
         };
 
+        /// Search mode for short patterns: several patterns share one lane word.
+        /// Pattern k of a word takes rows b..b+m-1 and a spacer row s = b+m,
+        /// and the next pattern starts at s+1. At spacer rows both operands of
+        /// every addition are forced to 0 (1 for a+b+1) and so is the bit a
+        /// shift moves up, so the next pattern starts from the row-0 boundary.
+        /// The spacer row also holds the pattern's bottom-row state, the value
+        /// the unpacked kernel reads at row m. Scores are kept in bit fields
+        /// of one accumulator word per lane, field k starting at s_k - s_0.
+        pub const Packed = struct {
+            /// Patterns taken from the front of the list given to `init`.
+            count: usize,
+            planes: [plane_words]V,
+            spacer: [lanes]u64,
+            read: [lanes]u64,
+            down: [lanes]u6,
+            acc0: [lanes]u64,
+            slots: [lanes][max_slots]Slot,
+            nslots: [lanes]u8,
+
+            const max_slots = 32;
+            const Slot = struct { lsb: u6, width: u7, bias: i64, index: u8 };
+            const range = plan.vals[nl] - plan.vals[0];
+
+            /// Largest field value of a pattern of length m: search-mode costs lie
+            /// in [m * min(0, c_min), m * gap], shifted up by the bias.
+            fn need(m: usize) u64 {
+                const bias: u64 = @intCast(@as(i64, @intCast(m)) * @max(0, -plan.cls.c[0]));
+                return bias + @as(u64, @intCast(m)) * scheme.gap + range;
+            }
+
+            fn fits(m: usize, width: u64) bool {
+                return width > 64 or need(m) < @as(u64, 1) << @intCast(width - 1);
+            }
+
+            pub fn init(patterns: []const []const u8) Packed {
+                comptime std.debug.assert(scheme.mode == .search);
+                var p: Packed = .{ .count = 0, .planes = undefined, .spacer = @splat(0), .read = @splat(0), .down = @splat(0), .acc0 = @splat(0), .slots = undefined, .nslots = @splat(0) };
+                var cpl: [plane_words]u64 = undefined;
+                var planes: [plane_words][lanes]u64 = undefined;
+                for (0..lanes) |l| {
+                    @memset(&cpl, 0);
+                    var row: usize = 0; // next free row
+                    var first: usize = 0; // s_0
+                    while (p.count < patterns.len and p.count < 255 and p.nslots[l] < max_slots) {
+                        const pat = patterns[p.count];
+                        std.debug.assert(pat.len >= 1);
+                        if (row + pat.len + 1 > 64) break;
+                        const s = row + pat.len;
+                        const n = p.nslots[l];
+                        if (n == 0) first = s;
+                        // The previous field ends where this one starts; the last field runs to bit 63.
+                        if (n > 0 and !fits(patterns[p.slots[l][n - 1].index].len, pat.len + 1)) break;
+                        if (!fits(pat.len, 64 - (s - first))) break;
+                        for (pat, row..) |c, i| setRow(c, 1, &cpl, 0, @intCast(i));
+                        const bias = @as(i64, @intCast(pat.len)) * @max(0, -plan.cls.c[0]);
+                        p.slots[l][n] = .{ .lsb = @intCast(s - first), .width = @intCast(64 - (s - first)), .bias = bias, .index = @intCast(p.count) };
+                        if (n > 0) p.slots[l][n - 1].width = @intCast(pat.len + 1);
+                        p.spacer[l] |= @as(u64, 1) << @intCast(s);
+                        p.acc0[l] +%= @as(u64, @intCast(@as(i64, @intCast(pat.len)) * scheme.gap + bias)) << @intCast(s - first);
+                        p.nslots[l] += 1;
+                        p.count += 1;
+                        row = s + 1;
+                    }
+                    p.down[l] = @intCast(first);
+                    p.read[l] = p.spacer[l] >> @intCast(first);
+                    polarize(1, &cpl);
+                    for (&planes, cpl) |*v, x| v[l] = x;
+                }
+                for (&p.planes, planes) |*v, x| v.* = x;
+                return p;
+            }
+
+            /// Level t of the bottom-row state is read at the spacer row from
+            /// the node the kernel reads it from, or, for a carry chain
+            /// (read as sum ^ a ^ b), from the sum: at a spacer both operands
+            /// are equal, so the sum bit there is the carry.
+            const read_node: [nl]u16 = blk: {
+                var ru: [nl]u16 = undefined;
+                for (0..nl) |t| {
+                    const o = plan.out_u[t];
+                    const n = plan.nodes[o];
+                    const isAdd = struct {
+                        fn f(i: u16) bool {
+                            return plan.nodes[i].op == .add or plan.nodes[i].op == .add1;
+                        }
+                    }.f;
+                    ru[t] = switch (n.op) {
+                        .shl0, .shl1 => o,
+                        .xor => if (isAdd(n.a)) n.a else if (isAdd(n.b)) n.b else @compileError("bitdp: cannot pack this scheme"),
+                        else => @compileError("bitdp: cannot pack this scheme"),
+                    };
+                }
+                break :blk ru;
+            };
+
+            /// Every end position in `text` where a pattern aligns with cost at
+            /// most `max_cost`; `Hit.lane` is the pattern's index.
+            pub fn scan(p: *const Packed, gpa: std.mem.Allocator, text: []const u8, max_cost: i64, hits: *std.ArrayList(Hit)) !void {
+                @setEvalBranchQuota(1 << 20);
+                const ones: V = @splat(~@as(u64, 0));
+                const zeros: V = @splat(0);
+                const e: V = p.spacer;
+                const ne = ~e;
+                const read: V = p.read;
+                const down: @Vector(lanes, u6) = p.down;
+                // Hit test: field + h has its top bit clear exactly when field <= max_cost + bias.
+                var h: [lanes]u64 = @splat(0);
+                var top_a: [lanes]u64 = @splat(0);
+                var unit: [lanes]u64 = @splat(0); // 1 at every field's low bit
+                for (0..lanes) |l| for (p.slots[l][0..p.nslots[l]]) |sl| {
+                    const half = @as(u64, 1) << @intCast(sl.width - 1);
+                    const lim = std.math.clamp(max_cost + sl.bias, -1, @as(i64, @intCast(half - 1)));
+                    h[l] +%= (half - @as(u64, @intCast(lim + 1))) << sl.lsb;
+                    top_a[l] |= half << sl.lsb;
+                    unit[l] |= @as(u64, 1) << sl.lsb;
+                };
+                const top: V = top_a;
+                const hv: V = h;
+                const base: V = @as(V, unit) * @as(V, @splat(@as(u64, @intCast(@abs(plan.vals[0])))));
+                var vp: [nl]V = undefined;
+                for (0..nl) |t| vp[t] = if ((scheme.gap >= plan.vals[t + 1]) != plan.inp_pol[t]) ones else zeros;
+                var acc: V = p.acc0;
+                for (text, 1..) |ch, end| {
+                    const cs = slot_of[ch];
+                    var r: [plan.len]V = undefined;
+                    inline for (plan.nodes[0..plan.len], 0..) |n, i| {
+                        r[i] = switch (n.op) {
+                            .input => if (n.a < nl) vp[n.a] else p.planes[(n.a - nl) * nslot + cs],
+                            .zero => zeros,
+                            .ones => ones,
+                            .not => ~r[n.a],
+                            .@"and" => r[n.a] & r[n.b],
+                            .@"or" => r[n.a] | r[n.b],
+                            .xor => r[n.a] ^ r[n.b],
+                            .add => (r[n.a] & ne) +% (r[n.b] & ne),
+                            .add1 => (r[n.a] | e) +% (r[n.b] | e) +% @as(V, @splat(1)),
+                            .shl0 => (r[n.a] & ne) << @splat(1),
+                            .shl1 => ((r[n.a] | e) << @splat(1)) | @as(V, @splat(1)),
+                        };
+                    }
+                    inline for (0..nl) |t| vp[t] = r[plan.out_v[t]];
+                    var inc: V = zeros;
+                    inline for (0..nl) |t| {
+                        const x = r[read_node[t]] >> down;
+                        const bits = if (plan.lvl_pol[t + 1]) ~x & read else x & read;
+                        inc +%= bits *% @as(V, @splat(@intCast(plan.vals[t + 1] - plan.vals[t])));
+                    }
+                    acc = if (plan.vals[0] < 0) (acc +% inc) -% base else (acc +% inc) +% base;
+                    const hit = ~(acc +% hv) & top;
+                    if (@reduce(.Or, hit) != 0) for (0..lanes) |l| {
+                        const hit_a: [lanes]u64 = hit;
+                        const acc_a: [lanes]u64 = acc;
+                        var bits = hit_a[l];
+                        while (bits != 0) : (bits &= bits - 1) {
+                            const at = @ctz(bits);
+                            for (p.slots[l][0..p.nslots[l]]) |sl| {
+                                if (@as(u32, sl.lsb) + sl.width - 1 != at) continue;
+                                const mask = (@as(u64, 1) << @intCast(sl.width - 1)) - 1;
+                                const field: i64 = @intCast((acc_a[l] >> sl.lsb) & mask);
+                                try hits.append(gpa, .{ .lane = sl.index, .end = end, .cost = field - sl.bias });
+                            }
+                        }
+                    };
+                }
+            }
+        };
+
         /// A search-mode match: pattern `lane` of a group ends at text position
         /// `end` (exclusive) with alignment cost `cost`.
         pub const Hit = struct { lane: u8, end: usize, cost: i64 };
@@ -175,12 +342,22 @@ pub fn Kernel(comptime scheme: Scheme) type {
         /// against that slot's character is at least cls.c[j+1].
         fn fillPlanes(pattern: []const u8, words: usize, cpl: []u64) void {
             @memset(cpl, 0);
-            for (0..nslot) |s| for (pattern, 0..) |c, i| {
+            for (pattern, 0..) |c, i| setRow(c, words, cpl, i / rows, @intCast(i % rows));
+            polarize(words, cpl);
+        }
+
+        /// Sets bit `bit` of word `w` in the class planes of pattern character `c`.
+        fn setRow(c: u8, words: usize, cpl: []u64, w: usize, bit: u6) void {
+            for (0..nslot) |s| {
                 const cost = if (s < scheme.alphabet.len) scheme.cost(c, scheme.alphabet[s]) else plan.cls.c[plan.cls.n - 1];
                 inline for (0..ncp) |j| {
-                    if (cost >= plan.cls.c[j + 1]) cpl[(j * nslot + s) * words + i / rows] |= @as(u64, 1) << @intCast(i % rows);
+                    if (cost >= plan.cls.c[j + 1]) cpl[(j * nslot + s) * words + w] |= @as(u64, 1) << bit;
                 }
-            };
+            }
+        }
+
+        /// Complements the planes the derived program reads complemented.
+        fn polarize(words: usize, cpl: []u64) void {
             inline for (0..ncp) |j| {
                 if (plan.inp_pol[nl + j]) for (cpl[j * nslot * words ..][0 .. nslot * words]) |*x| {
                     x.* = ~x.*;
@@ -491,6 +668,68 @@ test "search mode (pattern against the best substring) matches the scalar oracle
             if (m < 63) try std.testing.expectEqual(want, K.distance(p[0..m], t[0..n]));
         }
     }
+}
+
+test "packed scan (several patterns per word) reports exactly what the scalar DP finds" {
+    const gpa = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(14);
+    const rnd = prng.random();
+    inline for ([_]Scheme{
+        .{ .mode = .search },
+        .{ .sub = &schemes.tsTvCost, .gap = 2, .mode = .search },
+        .{ .match = -2, .mismatch = 3, .gap = 5, .mode = .search },
+    }) |s| {
+        const K = Kernel(s);
+        var text: [600]u8 = undefined;
+        for (&text) |*x| x.* = "ACGT"[rnd.int(u2)];
+        var store: [80][40]u8 = undefined;
+        var ps: [80][]const u8 = undefined;
+        for (&ps, &store) |*p, *st| {
+            const m = rnd.intRangeAtMost(usize, 1, 40);
+            const at = rnd.uintLessThan(usize, text.len - m);
+            @memcpy(st[0..m], text[at..][0..m]);
+            st[rnd.uintLessThan(usize, m)] = "ACGTN"[rnd.uintLessThan(usize, 5)];
+            p.* = st[0..m];
+        }
+        var hits: std.ArrayList(K.Hit) = .empty;
+        defer hits.deinit(gpa);
+        var buf: [41]i64 = undefined;
+        var done: usize = 0;
+        while (done < ps.len) {
+            const pk = K.Packed.init(ps[done..]);
+            try std.testing.expect(pk.count > 0);
+            hits.clearRetainingCapacity();
+            const max_cost: i64 = if (s.match < 0) -10 else 3;
+            try pk.scan(gpa, &text, max_cost, &hits);
+            var expected: usize = 0;
+            for (ps[done..][0..pk.count], 0..) |p, pi| for (1..text.len + 1) |e| {
+                // Best cost of p ending exactly at e: search mode on text[0..e], minus ending earlier.
+                const c = lastRow(s, p, text[0..e], &buf);
+                if (c > max_cost) continue;
+                expected += 1;
+                var found = false;
+                for (hits.items) |h| found = found or (h.lane == pi and h.end == e and h.cost == c);
+                try std.testing.expect(found);
+            };
+            try std.testing.expectEqual(expected, hits.items.len);
+            done += pk.count;
+        }
+    }
+}
+
+/// D(m, n) in search mode: the pattern against a suffix of `text` ending at its end.
+fn lastRow(s: Scheme, p: []const u8, text: []const u8, col: []i64) i64 {
+    for (col[0 .. p.len + 1], 0..) |*x, i| x.* = @as(i64, @intCast(i)) * s.gap;
+    for (text) |c| {
+        var diag = col[0];
+        col[0] = 0;
+        for (p, 1..) |pc, i| {
+            const cell = @min(diag + s.cost(pc, c), @min(col[i] + s.gap, col[i - 1] + s.gap));
+            diag = col[i];
+            col[i] = cell;
+        }
+    }
+    return col[p.len];
 }
 
 test "group scan reports exactly the end positions the scalar DP finds" {

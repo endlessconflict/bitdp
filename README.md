@@ -43,9 +43,9 @@ All numbers are from one core of a Ryzen 7 8840U, with every tool's total cost c
 
 The closest tool is BGSA, which runs Myers' and BitPAl's hand-derived kernels with one alignment per SIMD lane. In its own setting (all queries against all subjects of equal length) and at the same vector width, the derived kernels land close to it. For edit distance, bitdp reaches 0.73 to 0.93 of BGSA's speed with AVX2 and 0.90 to 1.20 with AVX-512. On BitPAl's (2, -3, -5) weights with AVX2, bitdp ties or beats BGSA's standard BitPAl (8.6 against 8.6 and 11.7 against 9.2 GCUPS) and trails its packed variant (8.6 against 13.0 and 11.7 against 14.0). Schemes BGSA cannot express still run at the same order of speed, for example 45.8 GCUPS with AVX2 for transition/transversion costs on 1 kbp sequences.
 
-On independent pairs, where each lane has its own text, batched bitdp is faster than edlib and than parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). For BLOSUM62 it is several times slower than parasail, since fifteen cost classes make the column program too long to pay off.
+On independent pairs, where each lane has its own text, batched bitdp is faster than edlib, ksw2 and parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7, 2.2 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). The same holds on real Illumina reads checked against the reference span a mapper placed them on. There the margin over edlib shrinks to 15 %, since those reads carry only 0.2 edits each. For BLOSUM62 it is several times slower than parasail, since fifteen cost classes make the column program too long to pay off.
 
-On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP in 0.30 s against 13.3 s.
+On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP in 0.30 s against 13.3 s. A 20 nt guide leaves most of a 64-bit word empty, so `Packed` puts three guides in each word and a spacer row after each guide to stop carries and shifts. That raises the scan from 12 to 27 GCUPS with AVX-512 and from 8 to 20 with AVX2. Hyyrö, Fredriksson and Navarro packed patterns this way for unit costs in 2005; here the same spacer rule works for every derived kernel.
 
 parasail's striped global kernels, which would otherwise be its fastest, scored some pairs below their optimum (426 of 100 000 on one workload), so the comparison leaves them out.
 
@@ -54,6 +54,7 @@ parasail's striped global kernels, which would otherwise be its fastest, scored 
 - Global and search (semi-global) modes, linear gap costs only. With affine gaps the value carried down a column can shift both up and down between thresholds, the copy graph acquires cycles, and the cascade above no longer applies.
 - At most 32 distinct score differences and 24 distinct substitution costs.
 - The carry-chain part still grows quadratically with the spread between substitution costs. This is where BitPAl's packed variant stays ahead, and why protein matrices are slow.
+- `Packed` handles search mode only, with patterns of at most 63 characters.
 - Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
 - Deriving a scheme happens inside the Zig compiler. Small schemes take seconds, while BLOSUM62 takes about 15 seconds and 375 MB of compiler memory.
 
@@ -88,6 +89,10 @@ const Find = bitdp.Kernel(.{ .sub = &bitdp.schemes.tsTvCost, .gap = 2, .mode = .
 var guides = try Find.Group.init(gpa, guide_list);
 defer guides.deinit(gpa);
 try guides.scan(gpa, genome, 4, &hits);
+
+// Short patterns, several per lane word. `count` says how many it took.
+const pk = Find.Packed.init(guide_list);
+try pk.scan(gpa, genome, 4, &hits); // Hit.lane is the pattern index
 
 // Any substitution cost function over a declared alphabet.
 const TsTv = bitdp.Kernel(bitdp.schemes.ts_tv);
