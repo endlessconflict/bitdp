@@ -55,7 +55,7 @@ parasail's striped global kernels, which would otherwise be its fastest, scored 
 - At most 32 distinct score differences and 24 distinct substitution costs.
 - The carry-chain part still grows quadratically with the spread between substitution costs. This is where BitPAl's packed variant stays ahead, and why protein matrices are slow.
 - Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
-- Deriving a scheme happens inside the Zig compiler. Small schemes take seconds, while BLOSUM62 takes about 20 seconds and 1.5 GB of compiler memory.
+- Deriving a scheme happens inside the Zig compiler. Small schemes take seconds, while BLOSUM62 takes about 15 seconds and 375 MB of compiler memory.
 
 ## Usage
 
