@@ -45,11 +45,13 @@ The closest tool is BGSA, which runs Myers' and BitPAl's hand-derived kernels wi
 
 On independent pairs, where each lane has its own text, batched bitdp is faster than edlib and than parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). For BLOSUM62 it is several times slower than parasail, since fifteen cost classes make the column program too long to pay off.
 
+On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP in 0.30 s against 13.3 s.
+
 parasail's striped global kernels, which would otherwise be its fastest, scored some pairs below their optimum (426 of 100 000 on one workload), so the comparison leaves them out.
 
 ## Limits
 
-- Global alignment with linear gap costs only. With affine gaps the value carried down a column can shift both up and down between thresholds, the copy graph acquires cycles, and the cascade above no longer applies.
+- Global and search (semi-global) modes, linear gap costs only. With affine gaps the value carried down a column can shift both up and down between thresholds, the copy graph acquires cycles, and the cascade above no longer applies.
 - At most 32 distinct score differences and 24 distinct substitution costs.
 - The carry-chain part still grows quadratically with the spread between substitution costs. This is where BitPAl's packed variant stays ahead, and why protein matrices are slow.
 - Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
@@ -79,6 +81,13 @@ try Edit.distances(gpa, patterns, texts, out);
 var g = try Edit.Group.init(gpa, subjects);
 defer g.deinit(gpa);
 const costs = g.distances(query);
+
+// Search mode: the pattern against its best-matching stretch of the text,
+// or every end position with cost at most k.
+const Find = bitdp.Kernel(.{ .sub = &bitdp.schemes.tsTvCost, .gap = 2, .mode = .search });
+var guides = try Find.Group.init(gpa, guide_list);
+defer guides.deinit(gpa);
+try guides.scan(gpa, genome, 4, &hits);
 
 // Any substitution cost function over a declared alphabet.
 const TsTv = bitdp.Kernel(bitdp.schemes.ts_tv);

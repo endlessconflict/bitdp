@@ -3,22 +3,25 @@
 const std = @import("std");
 const Scheme = @import("derive.zig").Scheme;
 
-/// Plain O(mn) global alignment cost. The oracle every kernel is checked against.
+/// Plain O(mn) alignment cost, global or search mode. The oracle every kernel
+/// is checked against.
 pub fn scalar(s: Scheme, pattern: []const u8, text: []const u8, buf: []i64) i64 {
     const m = pattern.len;
     const col = buf[0 .. m + 1];
     for (col, 0..) |*x, i| x.* = @as(i64, @intCast(i)) * s.gap;
+    var best = col[m];
     for (text, 1..) |c, j| {
         var diag = col[0];
-        col[0] = @as(i64, @intCast(j)) * s.gap;
+        col[0] = if (s.mode == .search) 0 else @as(i64, @intCast(j)) * s.gap;
         for (pattern, 1..) |pc, i| {
             const sub: i64 = s.cost(pc, c);
-            const best = @min(diag + sub, @min(col[i] + s.gap, col[i - 1] + s.gap));
+            const cell = @min(diag + sub, @min(col[i] + s.gap, col[i - 1] + s.gap));
             diag = col[i];
-            col[i] = best;
+            col[i] = cell;
         }
+        best = @min(best, col[m]);
     }
-    return col[m];
+    return if (s.mode == .search) best else col[m];
 }
 
 /// Myers' bit-vector algorithm (myers1999bitvector), unit costs, global mode,

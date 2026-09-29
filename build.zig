@@ -37,6 +37,17 @@ pub fn build(b: *std.Build) void {
     });
     b.step("bench", "Build the benchmark driver (see bench/README.md)").dependOn(&b.addInstallArtifact(bench, .{}).step);
 
+    const scan = b.addExecutable(.{
+        .name = "bitdp-scan",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/scan.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{.{ .name = "bitdp", .module = mod }},
+        }),
+    });
+    b.step("scan", "Build the genome scan demo (see bench/README.md)").dependOn(&b.addInstallArtifact(scan, .{}).step);
+
     const opts = b.addOptions();
     opts.addOption(u32, "scheme", b.option(u32, "scheme", "Ablation: scheme index in bench/ablation.zig") orelse 0);
     const ablation = b.addExecutable(.{

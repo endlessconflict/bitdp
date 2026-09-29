@@ -30,6 +30,17 @@ pub const Scheme = struct {
     /// can occur so the compiler can collect the distinct costs.
     sub: ?*const fn (u8, u8) i32 = null,
     alphabet: []const u8 = "ACGT",
+    /// `global`: the whole pattern against the whole text. `search`: the
+    /// whole pattern against the best-matching substring of the text (row 0
+    /// is all zeros and the result is the minimum over end positions).
+    mode: Mode = .global,
+
+    pub const Mode = enum { global, search };
+
+    /// Horizontal difference in row 0: gap for global, 0 for search.
+    pub fn topBoundary(s: Scheme) i32 {
+        return if (s.mode == .search) 0 else s.gap;
+    }
 
     pub fn cost(s: Scheme, a: u8, b: u8) i32 {
         if (s.sub) |f| return f(a, b);
@@ -244,6 +255,10 @@ fn diffs(s: Scheme, cls: Classes) Diffs {
     var set: [max_vals]i32 = undefined;
     set[0] = s.gap;
     var k: u16 = 1;
+    if (s.topBoundary() != s.gap) {
+        set[1] = s.topBoundary();
+        k = 2;
+    }
     var changed = true;
     while (changed) {
         changed = false;
@@ -363,7 +378,7 @@ fn build(s: Scheme, d: Diffs, cls: Classes, in_pol: bool, cls_pol: bool) Plan {
     plan.method = .truth_table;
 
     for (order[0..nl]) |t| {
-        const top_bit = s.gap >= d.vals[t]; // row 0 holds dh = gap
+        const top_bit = s.topBoundary() >= d.vals[t]; // row 0's dh
         var best: ?struct { p: Prog, prev: u16, u: u16, chain: bool, pol: bool } = null;
         for ([2]bool{ false, true }) |pol| {
             var q = p;
@@ -649,8 +664,8 @@ fn buildSym(s: Scheme, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool, lvl_
     // F = C and Q, propagating wherever C holds.
     for (1..k) |t| {
         const tau = vals[t];
-        const cin = s.gap >= tau; // row 0 holds dh = gap
-        const c = if (cin) y.costGe(.v, tau) else zero;
+        const cin = s.topBoundary() >= tau; // row 0's dh
+        const c = if (s.gap >= tau) y.costGe(.v, tau) else zero;
         const q = tau - s.gap;
         // C implies v <= mismatch - tau. Once a term's own bound on v reaches
         // that, its v-condition is implied by C: the term becomes the bare

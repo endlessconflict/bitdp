@@ -14,7 +14,7 @@ pub const deriveWith = derive_mod.deriveWith;
 pub const Options = derive_mod.Options;
 pub const derive_opcost = derive_mod.opCost;
 
-/// Global alignment cost kernel for `scheme`.
+/// Alignment cost kernel for `scheme` (global or search mode).
 pub fn Kernel(comptime scheme: Scheme) type {
     const plan = comptime derive(scheme);
     const nl = plan.k - 1;
@@ -47,7 +47,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
             }
 
             pub fn distance(a: *Aligner, text: []const u8) i64 {
-                return columns(1, false, null, a.words, .{a.m}, .{a.cpl}, &.{}, a.vp, .{text})[0];
+                return columns(1, false, null, a.words, .{a.m}, .{a.cpl}, &.{}, a.vp, .{text}, null)[0];
             }
         };
 
@@ -57,7 +57,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
             var cpl: [plane_words]u64 = undefined;
             var vp: [nl]@Vector(1, u64) = undefined;
             fillPlanes(pattern, 1, &cpl);
-            return columns(1, false, 1, 1, .{pattern.len}, .{&cpl}, &.{}, &vp, .{text})[0];
+            return columns(1, false, 1, 1, .{pattern.len}, .{&cpl}, &.{}, &vp, .{text}, null)[0];
         }
 
         /// SIMD lanes: one independent alignment per lane.
@@ -97,10 +97,30 @@ pub fn Kernel(comptime scheme: Scheme) type {
                 gpa.free(g.vp);
             }
 
+            /// Search mode: every end position in `text` where some pattern of
+            /// the group aligns with cost at most `max_cost`, appended to `hits`.
+            pub fn scan(g: *Group, gpa: std.mem.Allocator, text: []const u8, max_cost: i64, hits: *std.ArrayList(Hit)) !void {
+                comptime std.debug.assert(scheme.mode == .search);
+                var sink: Sink = .{ .gpa = gpa, .hits = hits, .max_cost = max_cost };
+                _ = columns(lanes, true, null, g.words, g.ms, undefined, g.planes, g.vp, @splat(text), &sink);
+                if (sink.err) |e| return e;
+            }
+
             /// Cost of every pattern in the group against `text`.
             pub fn distances(g: *Group, text: []const u8) [lanes]i64 {
-                return columns(lanes, true, null, g.words, g.ms, undefined, g.planes, g.vp, @splat(text));
+                return columns(lanes, true, null, g.words, g.ms, undefined, g.planes, g.vp, @splat(text), null);
             }
+        };
+
+        /// A search-mode match: pattern `lane` of a group ends at text position
+        /// `end` (exclusive) with alignment cost `cost`.
+        pub const Hit = struct { lane: u8, end: usize, cost: i64 };
+
+        const Sink = struct {
+            gpa: std.mem.Allocator,
+            hits: *std.ArrayList(Hit),
+            max_cost: i64,
+            err: ?anyerror = null,
         };
 
         /// Costs of many (pattern, text) pairs, `lanes` pairs at a time: each
@@ -129,7 +149,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
                     fillPlanes(patterns[@min(start + l, patterns.len - 1)], words, mine);
                     cpls[l] = mine;
                 }
-                const r = columns(lanes, false, null, words, ms, cpls, &.{}, vp, ts);
+                const r = columns(lanes, false, null, words, ms, cpls, &.{}, vp, ts, null);
                 for (0..@min(lanes, patterns.len - start)) |l| out[start + l] = r[l];
             }
         }
@@ -184,6 +204,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
             gplanes: []const @Vector(L, u64),
             vp: []@Vector(L, u64),
             texts: [L][]const u8,
+            sink: ?*Sink,
         ) [L]i64 {
             @setEvalBranchQuota(1 << 20);
             const W = @Vector(L, u64);
@@ -209,6 +230,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
                 score[l] = @as(i64, @intCast(ms[l])) * scheme.gap;
                 n_max = @max(n_max, texts[l].len);
             }
+            var best = score; // search mode: minimum over end positions, D(m, 0) included
             for (0..n_max) |j| {
                 var cs: [L]usize = undefined;
                 var active: @Vector(L, bool) = @splat(true);
@@ -263,8 +285,19 @@ pub fn Kernel(comptime scheme: Scheme) type {
                     }
                     inline for (0..nl) |t| vp[t * words + w] = r[plan.out_v[t]];
                 }
+                if (scheme.mode == .search) {
+                    best = @select(i64, active, @min(best, score), best);
+                    if (sink) |k| {
+                        const hit = @select(bool, active, score <= @as(S, @splat(k.max_cost)), @as(@Vector(L, bool), @splat(false)));
+                        if (@reduce(.Or, hit)) inline for (0..L) |l| {
+                            if (hit[l]) k.hits.append(k.gpa, .{ .lane = l, .end = j + 1, .cost = score[l] }) catch |e| {
+                                k.err = e;
+                            };
+                        };
+                    }
+                }
             }
-            return score;
+            return if (scheme.mode == .search) best else score;
         }
     };
 }
@@ -425,4 +458,83 @@ test "groups: several patterns against one shared text match the scalar oracle" 
             for (0..count) |i| try std.testing.expectEqual(reference.scalar(s, ps[i], text[0..n], &buf), r[i]);
         }
     }
+}
+
+test "search mode (pattern against the best substring) matches the scalar oracle" {
+    const gpa = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(12);
+    const rnd = prng.random();
+    var buf: [201]i64 = undefined;
+    inline for ([_]Scheme{
+        .{ .mode = .search },
+        .{ .match = -2, .mismatch = 3, .gap = 5, .mode = .search },
+        .{ .sub = &schemes.tsTvCost, .gap = 2, .mode = .search },
+    }) |s| {
+        const K = Kernel(s);
+        var p: [200]u8 = undefined;
+        var t: [300]u8 = undefined;
+        for (0..400) |_| {
+            const m = rnd.intRangeAtMost(usize, 1, 200);
+            const n = rnd.intRangeAtMost(usize, 0, 300);
+            for (p[0..m]) |*x| x.* = "ACGT"[rnd.int(u2)];
+            for (t[0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
+            // Plant the pattern (mutated) inside the text half of the time.
+            if (n > m and rnd.boolean()) {
+                const at = rnd.uintLessThan(usize, n - m);
+                @memcpy(t[at..][0..m], p[0..m]);
+                t[at + m / 2] = 'A';
+            }
+            const want = reference.scalar(s, p[0..m], t[0..n], &buf);
+            var a = try K.Aligner.init(gpa, p[0..m]);
+            defer a.deinit(gpa);
+            try std.testing.expectEqual(want, a.distance(t[0..n]));
+            if (m < 63) try std.testing.expectEqual(want, K.distance(p[0..m], t[0..n]));
+        }
+    }
+}
+
+test "group scan reports exactly the end positions the scalar DP finds" {
+    const gpa = std.testing.allocator;
+    const s: Scheme = .{ .sub = &schemes.tsTvCost, .gap = 2, .mode = .search };
+    const K = Kernel(s);
+    var prng = std.Random.DefaultPrng.init(13);
+    const rnd = prng.random();
+    var text: [2000]u8 = undefined;
+    for (&text) |*x| x.* = "ACGT"[rnd.int(u2)];
+    var store: [K.lanes][20]u8 = undefined;
+    var ps: [K.lanes][]const u8 = undefined;
+    for (0..K.lanes) |l| {
+        const at = rnd.uintLessThan(usize, text.len - 20);
+        @memcpy(&store[l], text[at..][0..20]);
+        store[l][rnd.uintLessThan(usize, 20)] = 'T';
+        ps[l] = &store[l];
+    }
+    var g = try K.Group.init(gpa, &ps);
+    defer g.deinit(gpa);
+    var hits: std.ArrayList(K.Hit) = .empty;
+    defer hits.deinit(gpa);
+    try g.scan(gpa, &text, 4, &hits);
+    // Scalar reference: the last DP row, column by column, is the best cost of
+    // the pattern ending at each text position.
+    var expected: usize = 0;
+    for (0..K.lanes) |l| {
+        var col: [21]i64 = undefined;
+        for (&col, 0..) |*x, i| x.* = @as(i64, @intCast(i)) * s.gap;
+        for (text, 1..) |c, e| {
+            var diag = col[0];
+            col[0] = 0;
+            for (ps[l], 1..) |pc, i| {
+                const cell = @min(diag + s.cost(pc, c), @min(col[i] + s.gap, col[i - 1] + s.gap));
+                diag = col[i];
+                col[i] = cell;
+            }
+            if (col[20] <= 4) {
+                expected += 1;
+                var found = false;
+                for (hits.items) |h| found = found or (h.lane == l and h.end == e and h.cost == col[20]);
+                try std.testing.expect(found);
+            }
+        }
+    }
+    try std.testing.expectEqual(expected, hits.items.len);
 }

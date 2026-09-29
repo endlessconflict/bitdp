@@ -77,6 +77,18 @@ Word operations per column with parts of the compiler switched off (`zig build a
 | tstv | 51 | 73 | 51 | 73 |
 | blosum62, gap 4 | 799 | 1742 | 799 | 1742 |
 
+## Genome scan (search mode)
+
+`bitdp-scan` takes the *E. coli* K-12 MG1655 genome (NCBI NC_000913.3, 4 641 652 bp, forward strand), 32 guides of 20 nt (genome 20-mers with two random substitutions each), transition/transversion costs with gap 2, and reports every text position where a guide ends with cost at most 4 (`Kernel.Group.scan`, one guide per lane).
+
+| Build | Hits | Time | GCUPS |
+|---|---|---|---|
+| bitdp, 8 lanes AVX-512 | 78 | 0.30 s | 9.85 |
+| bitdp, 4 lanes AVX2 | 78 | 0.36 s | 8.29 |
+| plain scalar DP (the correctness check) | 78 | 13.3 s | 0.22 |
+
+The hit lists agree guide by guide. A 20 nt guide fills only 20 of the 63 rows of a word, which is why the rate is well below the long-pattern numbers; packing several guides into one word is the obvious improvement. The scalar DP here is the plain reference loop, not an optimized aligner.
+
 ## Schemes
 
 The `edit` scheme uses unit costs, `bitpal` scores match 2, mismatch -3 and gap -5, `tstv` charges 1 for a transition, 2 for a transversion and 2 per gap position, and `blosum` is BLOSUM62 with gap 4. All gaps are linear.
