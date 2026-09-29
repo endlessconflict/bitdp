@@ -41,6 +41,42 @@ Pairs from `gen.py`: random patterns, and texts derived from them by substitutio
 
 The Ubuntu parasail build has no AVX-512 kernels, so its fair comparison is bitdp's AVX2 column. In pairwise mode the AVX-512 build gains little over AVX2 because each lane gathers its planes separately; the previous version of the kernel, which detected carries with a 64-bit overflow compare, ran pairwise AVX-512 edit about 17 % faster (45.6 against 38 GCUPS on the 1 kbp set) and AVX2 slower.
 
+## Scaling of the derived programs
+
+Word operations per column as the score range grows (`zig build ablation -Dscheme=100..123`). In the first family the chained block stays at one carry chain while the number k of distinct differences grows. In the second, the spread between match and mismatch grows too, and so does the number of carry chains. The chain count equals the number of difference values at or below mismatch cost minus gap cost, as the derivation predicts.
+
+| Costs (match, mismatch, gap) | k | chains | ops | | Costs | k | chains | ops |
+|---|---|---|---|---|---|---|---|---|
+| 0, 1, 1 | 3 | 1 | 14 | | -1, 1, 2 | 6 | 2 | 56 |
+| 0, 1, 2 | 5 | 1 | 28 | | -1, 2, 3 | 8 | 3 | 89 |
+| 0, 1, 3 | 7 | 1 | 55 | | -1, 3, 4 | 10 | 4 | 126 |
+| 0, 1, 4 | 9 | 1 | 71 | | -1, 4, 5 | 12 | 5 | 165 |
+| 0, 1, 5 | 11 | 1 | 95 | | -1, 5, 6 | 14 | 6 | 210 |
+| 0, 1, 6 | 13 | 1 | 119 | | -1, 6, 7 | 16 | 7 | 253 |
+| 0, 1, 7 | 15 | 1 | 139 | | -1, 7, 8 | 18 | 8 | 302 |
+| 0, 1, 8 | 17 | 1 | 155 | | -1, 8, 9 | 20 | 9 | 351 |
+| 0, 1, 9 | 19 | 1 | 183 | | -1, 9, 10 | 22 | 10 | 408 |
+| 0, 1, 10 | 21 | 1 | 215 | | -1, 10, 11 | 24 | 11 | 461 |
+| 0, 1, 11 | 23 | 1 | 243 | | -1, 11, 12 | 26 | 12 | 522 |
+| 0, 1, 12 | 25 | 1 | 267 | | -1, 12, 13 | 28 | 13 | 579 |
+
+## Ablation
+
+Word operations per column with parts of the compiler switched off (`zig build ablation -Dscheme=0..9`).
+
+| Scheme | all | no merge networks | no truth tables | symbolic direct only |
+|---|---|---|---|---|
+| edit (0,1,1) | 14 | 14 | 17 | 23 |
+| indel (0,2,1) | 6 | 6 | 11 | 11 |
+| (0,1,2) | 28 | 28 | 33 | 47 |
+| (0,3,2) | 57 | 57 | 57 | 68 |
+| bitpal (2,-3,-5) | 181 | 301 | 181 | 301 |
+| bitpal (3,-4,-6) | 253 | 470 | 253 | 470 |
+| bitpal (4,-5,-9) | 399 | 851 | 399 | 851 |
+| bitpal (4,-7,-11) | 509 | 1176 | 509 | 1176 |
+| tstv | 51 | 73 | 51 | 73 |
+| blosum62, gap 4 | 799 | 1742 | 799 | 1742 |
+
 ## Schemes
 
 The `edit` scheme uses unit costs, `bitpal` scores match 2, mismatch -3 and gap -5, `tstv` charges 1 for a transition, 2 for a transversion and 2 per gap position, and `blosum` is BLOSUM62 with gap 4. All gaps are linear.
