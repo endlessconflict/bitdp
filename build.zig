@@ -36,4 +36,20 @@ pub fn build(b: *std.Build) void {
         }),
     });
     b.step("bench", "Build the benchmark driver (see bench/README.md)").dependOn(&b.addInstallArtifact(bench, .{}).step);
+
+    const opts = b.addOptions();
+    opts.addOption(u32, "scheme", b.option(u32, "scheme", "Ablation: scheme index in bench/ablation.zig") orelse 0);
+    const ablation = b.addExecutable(.{
+        .name = "bitdp-ablation",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("bench/ablation.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bitdp", .module = mod },
+                .{ .name = "options", .module = opts.createModule() },
+            },
+        }),
+    });
+    b.step("ablation", "Print op counts per builder configuration for -Dscheme=N").dependOn(&b.addRunArtifact(ablation).step);
 }

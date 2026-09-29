@@ -10,6 +10,8 @@ pub const Scheme = derive_mod.Scheme;
 pub const Plan = derive_mod.Plan;
 pub const Op = derive_mod.Op;
 pub const derive = derive_mod.derive;
+pub const deriveWith = derive_mod.deriveWith;
+pub const Options = derive_mod.Options;
 pub const derive_opcost = derive_mod.opCost;
 
 /// Global alignment cost kernel for `scheme`.

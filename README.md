@@ -14,7 +14,7 @@ Myers' algorithm comes out of this as the special case with one carry chain. Not
 
 Wide score ranges need one more idea. Most planes ask whether a difference of two thermometer-coded numbers clears a threshold, and on thermometer codes, addition is merging, since the merged sequence of two sorted bit strings is the thermometer code of their sum. A Batcher odd-even merging network (one OR and one AND per comparator) therefore delivers every threshold at once. The algebra also fixes a single cut-off, the highest substitution cost minus the gap cost, above which no level needs a carry chain. Levels below it keep their chains and the rest of the column comes out of two merges.
 
-Two passes finish the program. For small score ranges the compiler also tries exhaustive truth-table synthesis and keeps the shorter result. Then it removes NOT gates by choosing, for every AND and OR and for every input plane, whether to build the value or its complement, since De Morgan makes both equally cheap and the kernel can store its inputs either way.
+For small score ranges the compiler also tries exhaustive truth-table synthesis and keeps whichever program is shorter.
 
 In addition, any integer substitution matrix works, not only match and mismatch, because the cost itself becomes one more thermometer-coded input and the same rules apply.
 
