@@ -10,7 +10,7 @@ Read the DP matrix one text column at a time, with the pattern rows packed into 
 
 Monotonicity is the key fact. Write the state in thermometer code (one bit per threshold, `[d >= t]`). Each threshold bit of the next state is then either a constant or a copy of one threshold bit of the previous state. A threshold that copies itself behaves like a carry chain with generate, propagate and kill positions, and a carry chain across a machine word is exactly what integer addition computes. A threshold that copies a different threshold is a shift and some bitwise logic. When the copies between different thresholds form no cycle, which holds for every linear-gap scheme, the whole column becomes a short cascade of additions and boolean operations.
 
-Myers' algorithm comes out of this as the special case with one carry chain. Nothing about it is hard-coded here, and the derived kernel uses 14 word operations per column where Myers' uses 15.
+Myers' algorithm comes out of this as the special case with one carry chain. Nothing about it is hard-coded here. In global mode the derived kernel uses 14 word operations per column where Myers' kernel, as written in `reference.zig`, uses 16, and in search mode both use 15. The 14 relies on the truth-table synthesis described below; the cascade alone gives 19.
 
 Wide score ranges need one more idea. Most planes ask whether a difference of two thermometer-coded numbers clears a threshold, and on thermometer codes, addition is merging, since the merged sequence of two sorted bit strings is the thermometer code of their sum. A Batcher odd-even merging network (one OR and one AND per comparator) therefore delivers every threshold at once. The algebra also fixes a single cut-off, the highest substitution cost minus the gap cost, above which no level needs a carry chain. Levels below it keep their chains and the rest of the column comes out of two merges.
 
@@ -35,19 +35,19 @@ Research code, not yet stable. Word operations per column, as derived:
 | DNA: transition 1, transversion 2, gap 2 | 5 | 2 | 51 | 10^5 pairs, bit-exact |
 | BLOSUM62 costs, gap 4 | 20 | 15 | 799 | 10^5 protein pairs, bit-exact |
 
-Rows five to eight are the weight sets that BitPAl (Loving, Hernandez and Benson, 2014) benchmarks, written as costs. A score scheme (M, I, G) becomes costs (-M, -I, -G), which gives the same optimal alignments. For (2, -3, -5), the one set whose operation counts the BitPAl paper reports, BitPAl needs 265 operations per 64-bit word and its packed variant 166. The derived kernel needs 181, fewer than the first and still more than the second. Operation counts include every AND, OR, XOR, NOT, shift and addition, and a + b + 1 counts as two.
+Rows five to eight are the weight sets that BitPAl (Loving, Hernandez and Benson, 2014) benchmarks, written as costs. A score scheme (M, I, G) becomes costs (-M, -I, -G), which gives the same optimal alignments. For (2, -3, -5), the set for which the BitPAl paper states both counts in its text, BitPAl needs 265 operations per 64-bit word and its packed variant 166. The derived kernel needs 181, fewer than the first and still more than the second. Operation counts include every AND, OR, XOR, NOT, shift and addition, and a + b + 1 and (x << 1) | 1 count as two.
 
 ## Speed
 
-All numbers are from one core of a Ryzen 7 8840U, with every tool's total cost checked against the others; [bench/RESULTS.md](bench/RESULTS.md) has the full tables and [bench/README.md](bench/README.md) the way to reproduce them.
+All throughput numbers are from one core of a Ryzen 7 8840U under Ubuntu in WSL2, with every tool run in the same environment and every tool's total cost checked against the others; [bench/RESULTS.md](bench/RESULTS.md) has the full tables and [bench/README.md](bench/README.md) the way to reproduce them.
 
 The closest tool is BGSA, which runs Myers' and BitPAl's hand-derived kernels with one alignment per SIMD lane. In its own setting (all queries against all subjects of equal length) and at the same vector width, the derived kernels land close to it. For edit distance, bitdp reaches 0.73 to 0.93 of BGSA's speed with AVX2 and 0.90 to 1.20 with AVX-512. On BitPAl's (2, -3, -5) weights with AVX2, bitdp ties or beats BGSA's standard BitPAl (8.6 against 8.6 and 11.7 against 9.2 GCUPS) and trails its packed variant (8.6 against 13.0 and 11.7 against 14.0). Schemes BGSA cannot express still run at the same order of speed, for example 45.8 GCUPS with AVX2 for transition/transversion costs on 1 kbp sequences.
 
-On independent pairs, where each lane has its own text, batched bitdp is faster than edlib, ksw2 and parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7, 2.2 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). The same holds on real Illumina reads checked against the reference span a mapper placed them on. There the margin over edlib shrinks to 15 %, since those reads carry only 0.2 edits each. For BLOSUM62 it is several times slower than parasail, since fifteen cost classes make the column program too long to pay off.
+On independent pairs, where each lane has its own text, batched bitdp is faster than edlib, ksw2 and parasail's correct kernels on every DNA workload measured (for instance 35.2 against 21.7, 2.2 and 5.2 GCUPS for edit distance on 1 kbp pairs with AVX2). One pair at a time, bitdp reaches 0.83 to 0.92 of edlib's speed, so the gain over edlib comes from running one alignment per lane, which edlib does not do. The same holds on real Illumina reads checked against the reference span a mapper placed them on. There the margin over edlib shrinks to 15 %, since those reads carry only 0.2 edits each. For BLOSUM62 it is several times slower than parasail (0.77 against 2.87 GCUPS with AVX2), since the spread of its costs puts 15 carry chains and 799 operations in every column.
 
-On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP in 0.30 s against 13.3 s. A 20 nt guide leaves most of a 64-bit word empty, so `Packed` puts three guides in each word and a spacer row after each guide to stop carries and shifts. That raises the scan from 12 to 27 GCUPS with AVX-512 and from 8 to 20 with AVX2. Hyyrö, Fredriksson and Navarro packed patterns this way for unit costs in 2005; here the same spacer rule works for every derived kernel.
+On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP in 0.30 s against 13.3 s. A 20 nt guide leaves most of a 64-bit word empty, so `Packed` puts three guides in each word and a spacer row after each guide to stop carries and shifts. That raises the scan from 12 to 27 GCUPS with AVX-512 and from 8 to 19-20 with AVX2, with hits identical to the unpacked kernel and the plain DP. Hyyrö, Fredriksson and Navarro packed patterns this way for unit costs in 2005; here the same spacer rule works for every derived kernel.
 
-parasail's striped global kernels, which would otherwise be its fastest, scored some pairs below their optimum (426 of 100 000 on one workload), so the comparison leaves them out.
+parasail's striped global kernels, which would otherwise be its fastest, returned different totals from every other tool on every workload (on the 150 bp edit set, 426 of 100 000 pairs scored below their optimum), so the comparison leaves them out.
 
 ## Limits
 
@@ -56,7 +56,7 @@ parasail's striped global kernels, which would otherwise be its fastest, scored 
 - The carry-chain part still grows quadratically with the spread between substitution costs. This is where BitPAl's packed variant stays ahead, and why protein matrices are slow.
 - `Packed` handles search mode only, with patterns of at most 63 characters.
 - Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
-- Deriving a scheme happens inside the Zig compiler. Small schemes take seconds, while BLOSUM62 takes about 15 seconds and 375 MB of compiler memory.
+- Deriving a scheme happens inside the Zig compiler. Small schemes compile in about 2 seconds, while BLOSUM62 takes about 5 seconds and 0.5 GB of compiler memory (one compile step, Zig 0.16.0 under Windows 11).
 
 ## Usage
 
@@ -103,6 +103,32 @@ const Blosum = bitdp.Kernel(bitdp.schemes.blosum62Linear(4));
 zig build test
 zig build mve -Doptimize=ReleaseFast   # prints derived programs, verifies, times
 ```
+
+## Using from C
+
+Precompiled kernels are exported through a C interface ([include/bitdp.h](include/bitdp.h)) for edit distance and transition/transversion costs (global and search mode) and for BitPAl's (2, -3, -5) weights (global mode). Custom schemes stay Zig-only, because the derivation runs at compile time.
+
+```c
+#include <stdio.h>
+#include "bitdp.h"
+
+int main(void) {
+    int64_t cost;
+    if (bitdp_edit_global_distance("ACGTTGCA", 8, "ACGTGCA", 7, &cost) != BITDP_OK) return 1;
+    printf("%lld\n", (long long)cost); /* 1 */
+    return 0;
+}
+```
+
+```sh
+zig build lib -Doptimize=ReleaseFast   # zig-out/lib: libbitdp.a and libbitdp.so (bitdp.lib, bitdp.dll on Windows)
+cc -O2 example.c -Izig-out/include zig-out/lib/libbitdp.a -o example
+zig build test-c                       # the C tests, built as C99 and as C++
+```
+
+Each scheme has `_distance` for one pair with a pattern of up to 62 characters, an `_aligner_new` / `_aligner_distance` / `_aligner_free` trio for a pattern of any length aligned against many texts, and `_distances` for many independent pairs, one per SIMD lane. Search mode adds `_scan`, which returns every end position where a pattern costs at most k; the hit array is released with `bitdp_hits_free`. Every function returns 0 on success and writes its results through pointers.
+
+On x86-64, `zig build lib` targets `x86_64_v3` (AVX2) unless you pass `-Dcpu`, so the library runs on most x86-64 machines from the last decade. Pass `-Dcpu=native` to build for the machine at hand, `-Dcpu=x86_64_v4` for AVX-512, or `-Dcpu=x86_64_v2` for older CPUs. The CPU level sets the number of SIMD lanes, so it changes speed but never results.
 
 ## References
 

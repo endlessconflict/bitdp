@@ -26,7 +26,8 @@ pub fn scalar(s: Scheme, pattern: []const u8, text: []const u8, buf: []i64) i64 
 
 /// Myers' bit-vector algorithm (myers1999bitvector), unit costs, global mode,
 /// pattern length <= 64. Written from the recurrence as the hand-derived baseline.
-/// 15 word operations per column (score update excluded).
+/// 16 word operations per column (score update excluded), counted like derived
+/// programs: (ph << 1) | 1 is two. Search mode drops the | 1 and needs 15.
 pub fn myers(pattern: []const u8, text: []const u8) i64 {
     const m = pattern.len;
     std.debug.assert(m >= 1 and m <= 64);
@@ -52,4 +53,4 @@ pub fn myers(pattern: []const u8, text: []const u8) i64 {
     return score;
 }
 
-pub const myers_ops = 15;
+pub const myers_ops = 16;

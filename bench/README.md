@@ -47,4 +47,6 @@ bwa index ref.fa && bwa mem ref.fa r1.fq | samtools view -F 0x904 - | python3 re
 ./zig-out/bin/bitdp-bench edit bench/reads.tsv batch
 ```
 
+RESULTS.md reports the median of three runs; `bench/median3.sh COMMAND ARGS...` runs any of the commands above three times and prints the median.
+
 Schemes: `edit` (unit costs), `bitpal` (score 2, -3, gap -5), `tstv` (transition 1, transversion 2, gap 2), `blosum` (BLOSUM62, gap 4). Time covers pattern preprocessing plus alignment, and excludes file reading.

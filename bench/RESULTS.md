@@ -57,7 +57,7 @@ All tools give the same totals (edit 38 308, bitpal -38 540 294, tstv 65 477). P
 
 ## Scaling of the derived programs
 
-Word operations per column as the score range grows (`zig build ablation -Dscheme=100..123`). In the first family the chained block stays at one carry chain while the number k of distinct differences grows. In the second, the spread between match and mismatch grows too, and so does the number of carry chains. The chain count equals the number of difference values at or below mismatch cost minus gap cost, as the derivation predicts.
+Word operations per column as the score range grows (`zig build ablation -Dscheme=100..123`). In the first family the chained block stays at one carry chain while the number k of distinct differences grows. In the second, the spread between match and mismatch grows too, and so does the number of carry chains. The chain count equals the number of difference values above the smallest one and at or below mismatch cost minus gap cost, as the derivation predicts.
 
 | Costs (match, mismatch, gap) | k | chains | ops | | Costs | k | chains | ops |
 |---|---|---|---|---|---|---|---|---|
@@ -76,13 +76,13 @@ Word operations per column as the score range grows (`zig build ablation -Dschem
 
 ## Ablation
 
-Word operations per column with parts of the compiler switched off (`zig build ablation -Dscheme=0..9`).
+Word operations per column with parts of the compiler switched off (`zig build ablation -Dscheme=0..9`), re-run at commit 0af2499. An earlier version of this table had 17 and 33 in the "no truth tables" column, from an older commit.
 
 | Scheme | all | no merge networks | no truth tables | symbolic direct only |
 |---|---|---|---|---|
-| edit (0,1,1) | 14 | 14 | 17 | 23 |
+| edit (0,1,1) | 14 | 14 | 19 | 23 |
 | indel (0,2,1) | 6 | 6 | 11 | 11 |
-| (0,1,2) | 28 | 28 | 33 | 47 |
+| (0,1,2) | 28 | 28 | 35 | 47 |
 | (0,3,2) | 57 | 57 | 57 | 68 |
 | bitpal (2,-3,-5) | 181 | 301 | 181 | 301 |
 | bitpal (3,-4,-6) | 253 | 470 | 253 | 470 |
@@ -93,7 +93,7 @@ Word operations per column with parts of the compiler switched off (`zig build a
 
 ## Genome scan (search mode)
 
-`bitdp-scan` takes the *E. coli* K-12 MG1655 genome (NCBI NC_000913.3, 4 641 652 bp, forward strand), 32 guides of 20 nt (genome 20-mers with two random substitutions each), transition/transversion costs with gap 2, and reports every text position where a guide ends with cost at most 4 (`Kernel.Group.scan`, one guide per lane).
+`bitdp-scan` takes the *E. coli* K-12 MG1655 genome (NCBI NC_000913.3, 4 641 652 bp, forward strand), 32 guides of 20 nt (genome 20-mers with up to two random substitutions each: the two random draws can keep a base or hit the same position; for these 32 guides, 20 have two substitutions and 12 have one), transition/transversion costs with gap 2, and reports every text position where a guide ends with cost at most 4 (`Kernel.Group.scan`, one guide per lane).
 
 | Build | Hits | Time | GCUPS |
 |---|---|---|---|
@@ -112,7 +112,7 @@ A 20 nt guide fills only 20 of the 63 rows of a word. `Kernel.Packed` puts three
 | AVX2, 4 lanes | 48 | 128 | 0.547 s, 8.1 GCUPS | 0.227 s, 19.7 GCUPS |
 | | 96 | 306 | 1.119 s, 8.0 GCUPS | 0.464 s, 19.2 GCUPS |
 
-The packed hits match the unpacked ones, and on 48 guides the scalar DP (128 hits, 20.6 s). Packing is 2.3 to 2.4 times faster rather than 3 times because each column also pays for the spacer masks (one or two operations per addition and shift) and for reading three score fields.
+The packed hits match the unpacked ones, and on 48 guides the scalar DP (128 hits, 20.6 s). A later check from the same code (2026-10-09) compared the full hit sets, guide, end position and cost, of the packed kernel, the unpacked kernel and the scalar DP on 32, 48 and 96 guides: all identical (78, 128 and 306 hits). Packing is 2.3 to 2.4 times faster rather than 3 times because each column also pays for the spacer masks (one or two operations per addition and shift) and for reading three score fields.
 
 ## Schemes
 
