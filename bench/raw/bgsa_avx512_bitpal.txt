@@ -1,0 +1,19 @@
+# E16: BGSA's shipped AVX-512 packed BitPAl kernel (original/BGSA_AVX512, dffcf9e), 2026-10-09
+# build: copied to ~/bgsa-builds/bitpal-packed-avx512-shipped, prebuilt binaries removed, make cc=gcc:
+#   gcc -mfma -mavx512f -mavx512cd -w -fopenmp -O3 ... (identical to the edit-avx512 build used for Table 4)
+## correctness (independent C DP, match 2 mismatch -3 linear gap -5, every query x subject):
+size 150: BGSA 800000 pairs total -109959759; DP 800000 pairs total -109959759; sorted score multisets identical
+size 1000: BGSA 20000 pairs total -15945808; DP 20000 pairs total -15945808; sorted score multisets identical
+## timing, bench/median3.sh, -N 1 (one thread), metric: BGSA's 'Cal GCUPS' as for every BGSA row
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== 150 bp: 64 queries x 12500 subjects
+run 1: Cal GCUPS is 15.05
+run 2: Cal GCUPS is 15.09
+run 3: Cal GCUPS is 15.23
+median gcups=15.09
+== 1000 bp: 16 queries x 1250 subjects
+run 1: Cal GCUPS is 15.59
+run 2: Cal GCUPS is 15.35
+run 3: Cal GCUPS is 15.87
+median gcups=15.59
+## an earlier session the same day (per-run Cal values not echoed by the first median3.sh version): medians 14.71 (150 bp), 15.19 (1 kbp)

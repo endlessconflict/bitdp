@@ -1,0 +1,21 @@
+﻿# power start 2026-10-10T18:49:56: BatteryStatus=2 (2 = on AC), charge=100 %, scheme (Balanced)
+# E7a reads 2026-10-10T18:50:02-05:00; bitdp-bench 0af2499 (E10 binaries, md5 a852646c6d1c da2efd7afde7); baselines.c with K; 193660 pairs; max edit distance 14
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== T6 edit
+[T6 reads edit bitdp 1pair] rep 1: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2486 gcups=7.790 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 1: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1820 gcups=10.640 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 1: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.2014 gcups=9.615 ops_per_word=14
+[T6 reads edit edlib] rep 1: edlib edit pairs=193660 cost_sum=38308 seconds=0.4228 gcups=4.580
+[T6 reads edit edlib k=14] rep 1: edlib edit pairs=193660 cost_sum=38308 seconds=0.4243 gcups=4.564 k=14 over_k=0
+[T6 reads edit bitdp 1pair] rep 2: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2683 gcups=7.219 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 2: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1838 gcups=10.537 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 2: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.2008 gcups=9.642 ops_per_word=14
+[T6 reads edit edlib] rep 2: edlib edit pairs=193660 cost_sum=38308 seconds=0.4370 gcups=4.431
+[T6 reads edit edlib k=14] rep 2: edlib edit pairs=193660 cost_sum=38308 seconds=0.4101 gcups=4.723 k=14 over_k=0
+[T6 reads edit bitdp 1pair] rep 3: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2541 gcups=7.621 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 3: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1824 gcups=10.616 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 3: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.2009 gcups=9.638 ops_per_word=14
+[T6 reads edit edlib] rep 3: edlib edit pairs=193660 cost_sum=38308 seconds=0.4179 gcups=4.634
+[T6 reads edit edlib k=14] rep 3: edlib edit pairs=193660 cost_sum=38308 seconds=0.4043 gcups=4.790 k=14 over_k=0
+# E7a end 2026-10-10T18:50:07-05:00
+# power end 2026-10-10T18:50:07: BatteryStatus=2 (2 = on AC), charge=100 %, scheme (Balanced)

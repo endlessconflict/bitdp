@@ -2,7 +2,8 @@
 // a "pattern<TAB>text" file, with parasail (SIMD) or edlib (Myers).
 //
 // build: gcc -O3 -march=native baselines.c -o baselines -lparasail -ledlib -lstdc++
-// usage: baselines {edlib|striped16|scan16|diag16|striped_sat|scan_sat} {edit|bitpal|tstv|blosum} FILE
+// usage: baselines {edlib|striped16|scan16|diag16|striped_sat|scan_sat} {edit|bitpal|tstv|blosum} FILE [K]
+// K (edlib only): distance bound passed to edlib; pairs above it count as failures.
 //
 // Prints the sum of alignment costs (negated parasail scores), so the result
 // can be checked against bitdp's, and the time spent aligning.
@@ -25,11 +26,12 @@ static double now(void) {
 static int is_purine(char c) { return c == 'A' || c == 'G'; }
 
 int main(int argc, char **argv) {
-    if (argc != 4) {
-        fprintf(stderr, "usage: %s TOOL SCHEME FILE\n", argv[0]);
+    if (argc != 4 && argc != 5) {
+        fprintf(stderr, "usage: %s TOOL SCHEME FILE [K]\n", argv[0]);
         return 2;
     }
     const char *tool = argv[1], *scheme = argv[2];
+    int k = argc == 5 ? atoi(argv[4]) : -1;
 
     // Scores and linear gap penalty (parasail: gap of length k costs open + (k-1) * extend).
     parasail_matrix_t *matrix = NULL;
@@ -76,7 +78,7 @@ int main(int argc, char **argv) {
     buf[size] = 0;
     fclose(f);
 
-    long long total = 0, cells = 0, pairs = 0;
+    long long total = 0, cells = 0, pairs = 0, over_k = 0;
     double busy = 0;
     for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
         char *tab = strchr(line, '\t');
@@ -90,15 +92,18 @@ int main(int argc, char **argv) {
             total -= parasail_result_get_score(r);
             parasail_result_free(r);
         } else {
-            EdlibAlignResult r = edlibAlign(p, m, t, n, edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
-            total += r.editDistance;
+            EdlibAlignResult r = edlibAlign(p, m, t, n, edlibNewAlignConfig(k, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
+            if (r.editDistance < 0) over_k++;
+            else total += r.editDistance;
             edlibFreeAlignResult(r);
         }
         busy += now() - t0;
         cells += (long long)m * n;
         pairs++;
     }
-    printf("%s %s pairs=%lld cost_sum=%lld seconds=%.4f gcups=%.3f\n", tool, scheme, pairs, total, busy, cells / busy * 1e-9);
+    printf("%s %s pairs=%lld cost_sum=%lld seconds=%.4f gcups=%.3f", tool, scheme, pairs, total, busy, cells / busy * 1e-9);
+    if (k >= 0) printf(" k=%d over_k=%lld", k, over_k);
+    printf("\n");
     parasail_matrix_free(matrix);
     free(buf);
     return 0;

@@ -1,0 +1,15 @@
+# B16 re-measurement: compile cost of deriving BLOSUM62, gap 4 (paper §4.8: "15 s and 375 MB")
+# date: 2026-10-09; code: bitdp 0af2499 (scratch copy); Zig 0.16.0; Windows 11 native; AMD Ryzen 7 8840U
+# build: bench/ablation.zig with the configs list reduced to the default builder ("all") only, so one
+#        derivation is compiled; command: zig build ablation -Dscheme=9 --summary all --cache-dir <fresh>
+# (the paper's figure was introduced in README commit 8c41b4d without a recorded command or platform)
+run 1: compile exe step 5 s, MaxRSS 486 MB; whole zig build wall 17 s (first run, cold global cache)
+run 2: compile exe step 5 s, MaxRSS 486 MB; whole zig build wall 13.5 s
+run 3: compile exe step 5 s, MaxRSS 486 MB; whole zig build wall 14.0 s
+compile_step_seconds 5
+compile_step_maxrss_mb 486
+build_wall_seconds 13.5-14.0
+# small schemes, same setup (configs reduced to "all"), fresh cache:
+edit (0,1,1): compile exe step 2 s, MaxRSS 248 MB
+ts/tv: compile exe step 2 s, MaxRSS 238 MB
+small_scheme_compile_seconds 2

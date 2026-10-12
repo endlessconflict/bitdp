@@ -1,0 +1,64 @@
+# Not used for any table. The same session script run first in Windows power mode 'Best performance', the mode the machine was in on
+# 2026-10-12 (changed from 'Best power efficiency' on 2026-10-10 at 21:42, after that day's sessions; power_mode_events.txt).
+# power start 2026-10-12T13:48:17: BatteryStatus=2 (2 = on AC), charge=81 %, scheme (Balanced), Windows power mode on AC: Best performance
+# T4 AVX-512 interleaved session 2026-10-12T13:48:22-05:00; bitdp-bench built from 0af2499 (-Dcpu=znver4), md5 da2efd7afde7; BGSA dffcf9e, -march=native builds of 2026-10-10 (md5 edit a8b9e2f88060, bitpal e503b9fe2b41)
+# order within a cell: BGSA run 1, bitdp run 1, BGSA run 2, bitdp run 2, BGSA run 3, bitdp run 3
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== T4 edit 150 bp; bitdp AVX-512 total: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1334 gcups=134.900 ops_per_word=14
+totals edit-avx512-native: BGSA: 64 x 12500 pairs (subjects padded to 12512), score sum 65920019 MATCH 
+[T4 edit 150 BGSA edit-avx512-native] rep 1: Cal GCUPS is 171.14
+[T4 edit 150 bitdp AVX-512] rep 1: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1275 gcups=141.194 ops_per_word=14
+[T4 edit 150 BGSA edit-avx512-native] rep 2: Cal GCUPS is 167.96
+[T4 edit 150 bitdp AVX-512] rep 2: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1274 gcups=141.258 ops_per_word=14
+[T4 edit 150 BGSA edit-avx512-native] rep 3: Cal GCUPS is 169.36
+[T4 edit 150 bitdp AVX-512] rep 3: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1271 gcups=141.607 ops_per_word=14
+== T4 edit 1000 bp; bitdp AVX-512 total: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.0900 gcups=222.225 ops_per_word=14
+totals edit-avx512-native: BGSA: 16 x 1250 pairs (subjects padded to 1264), score sum 10514872 MATCH 
+[T4 edit 1000 BGSA edit-avx512-native] rep 1: Cal GCUPS is 178.61
+[T4 edit 1000 bitdp AVX-512] rep 1: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.0912 gcups=219.358 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx512-native] rep 2: Cal GCUPS is 178.36
+[T4 edit 1000 bitdp AVX-512] rep 2: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.0914 gcups=218.805 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx512-native] rep 3: Cal GCUPS is 169.53
+[T4 edit 1000 bitdp AVX-512] rep 3: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.0897 gcups=222.914 ops_per_word=14
+== T4 bitpal 150 bp; bitdp AVX-512 total: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.0367 gcups=17.362 ops_per_word=181
+totals bitpal-packed-avx512-shipped-native: BGSA: 64 x 12500 pairs (subjects padded to 12512), score sum -109959759 MATCH 
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 1: Cal GCUPS is 22.18
+[T4 bitpal 150 bitdp AVX-512] rep 1: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.0377 gcups=17.346 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 2: Cal GCUPS is 22.40
+[T4 bitpal 150 bitdp AVX-512] rep 2: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.0426 gcups=17.265 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 3: Cal GCUPS is 22.39
+[T4 bitpal 150 bitdp AVX-512] rep 3: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.0414 gcups=17.284 ops_per_word=181
+== T4 bitpal 1000 bp; bitdp AVX-512 total: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=0.8554 gcups=23.380 ops_per_word=181
+totals bitpal-packed-avx512-shipped-native: BGSA: 16 x 1250 pairs (subjects padded to 1264), score sum -15945808 MATCH 
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 1: Cal GCUPS is 23.70
+[T4 bitpal 1000 bitdp AVX-512] rep 1: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=0.8546 gcups=23.402 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 2: Cal GCUPS is 23.07
+[T4 bitpal 1000 bitdp AVX-512] rep 2: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=0.8556 gcups=23.376 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 3: Cal GCUPS is 23.44
+[T4 bitpal 1000 bitdp AVX-512] rep 3: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=0.8501 gcups=23.527 ops_per_word=181
+# T4 AVX-512 interleaved end 2026-10-12T13:48:39-05:00
+# power end 2026-10-12T13:48:39: BatteryStatus=2 (2 = on AC), charge=81 %, scheme (Balanced), Windows power mode on AC: Best performance
+# probes: one AVX2 cell of Table 4 and one edlib cell of Table 5, 'Best performance' (10 October, 'Best power efficiency': BGSA 110.8, bitdp 73.5, edlib 7.15)
+# probe 2026-10-12T13:49:09-05:00
+[probe edit 150 BGSA edit-avx2] rep 1: cal GCUPS is 157.07
+[probe edit 150 bitdp AVX2] rep 1: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.1837 gcups=97.983 ops_per_word=14
+[probe dna150 edit edlib] rep 1: edlib edit pairs=100000 cost_sum=1316060 seconds=0.2626 gcups=8.568
+[probe edit 150 BGSA edit-avx2] rep 2: cal GCUPS is 145.11
+[probe edit 150 bitdp AVX2] rep 2: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.1716 gcups=104.873 ops_per_word=14
+[probe dna150 edit edlib] rep 2: edlib edit pairs=100000 cost_sum=1316060 seconds=0.2153 gcups=10.450
+[probe edit 150 BGSA edit-avx2] rep 3: cal GCUPS is 163.57
+[probe edit 150 bitdp AVX2] rep 3: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.1662 gcups=108.284 ops_per_word=14
+[probe dna150 edit edlib] rep 3: edlib edit pairs=100000 cost_sum=1316060 seconds=0.2126 gcups=10.581
+     16 cpu MHz		: 3293.854
+# the same probes after switching to 'Best power efficiency', just before the session of t4_avx512_interleaved.txt
+# probe 2026-10-12T13:50:33-05:00
+[probe edit 150 BGSA edit-avx2] rep 1: cal GCUPS is 115.76
+[probe edit 150 bitdp AVX2] rep 1: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2455 gcups=73.319 ops_per_word=14
+[probe dna150 edit edlib] rep 1: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3434 gcups=6.553
+[probe edit 150 BGSA edit-avx2] rep 2: cal GCUPS is 113.62
+[probe edit 150 bitdp AVX2] rep 2: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2487 gcups=72.374 ops_per_word=14
+[probe dna150 edit edlib] rep 2: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3629 gcups=6.199
+[probe edit 150 BGSA edit-avx2] rep 3: cal GCUPS is 104.08
+[probe edit 150 bitdp AVX2] rep 3: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2433 gcups=73.991 ops_per_word=14
+[probe dna150 edit edlib] rep 3: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3314 gcups=6.789
+     16 cpu MHz		: 3293.854

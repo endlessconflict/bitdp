@@ -1,0 +1,19 @@
+cpu: avx512f present
+genome 4641652 bp, 32 guides, K=4, lanes=8: packed 78 hits, unpacked 78, scalar 78
+packed == scalar (guide, end, cost): true
+unpacked == scalar: true
+packed == unpacked: true
+first scalar hit: guide 0, end 1820248, cost 4
+  (14 s)
+genome 4641652 bp, 48 guides, K=4, lanes=8: packed 128 hits, unpacked 128, scalar 128
+packed == scalar (guide, end, cost): true
+unpacked == scalar: true
+packed == unpacked: true
+first scalar hit: guide 0, end 1820248, cost 4
+  (20 s)
+genome 4641652 bp, 96 guides, K=4, lanes=8: packed 306 hits, unpacked 306, scalar 306
+packed == scalar (guide, end, cost): true
+unpacked == scalar: true
+packed == unpacked: true
+first scalar hit: guide 0, end 1820248, cost 4
+  (40 s)

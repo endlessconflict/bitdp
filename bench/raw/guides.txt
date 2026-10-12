@@ -1,0 +1,5 @@
+# C07: substitutions per guide, from an exact replica of bench/scan.zig lines 35-53 (seed 2026)
+# run on the restored ~/braid/ref.fa (NC_000913.3), Zig 0.16.0, 2026-10-09
+genome 4641652 bp, 32 guides: substitutions per guide 0:0 1:12 2:20
+genome 4641652 bp, 48 guides: substitutions per guide 0:2 1:17 2:29
+genome 4641652 bp, 96 guides: substitutions per guide 0:4 1:45 2:47

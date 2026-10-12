@@ -1,0 +1,54 @@
+# parasail striped failures: analysis, 2026-10-09 (libparasail 2.6.2+dfsg Ubuntu, gcc 15.2.0, AMD Ryzen 7 8840U, WSL2)
+## overlap and features (bench/parasail_check.c list mode + analysis script)
+== dna150.tsv
+  edit: striped16 426, striped32 231, both 1, 32-bit failures also failing at 16 bit: False
+  bitpal: striped16 426, striped32 232, both 1, 32-bit failures also failing at 16 bit: False
+  tstv: striped16 430, striped32 223, both 1, 32-bit failures also failing at 16 bit: False
+  striped16 across schemes: edit 426, bitpal 426, tstv 430; edit&bitpal 426, all three 400
+  striped32 across schemes: edit 231, bitpal 232, tstv 223; all three 212
+  edit striped16 score deficit (DP - parasail): {1: 424, 2: 2}
+  n - m: failing mean -2.24 (min -13, max 6); all pairs mean -0.00 (min -14, max 16)
+  n - m > 0 among failing 0.17, among all 0.44
+  failing (426): optimal can start with deletion 0.02 / insertion 0.02; end with deletion 0.05 / insertion 0.04
+  non-failing sample (600): optimal can start with deletion 0.05 / insertion 0.01; end with deletion 0.04 / insertion 0.05
+== dna1000.tsv
+  edit: striped16 46, striped32 18, both 0, 32-bit failures also failing at 16 bit: False
+  bitpal: striped16 46, striped32 18, both 0, 32-bit failures also failing at 16 bit: False
+  tstv: striped16 51, striped32 19, both 0, 32-bit failures also failing at 16 bit: False
+  striped16 across schemes: edit 46, bitpal 46, tstv 51; edit&bitpal 46, all three 43
+  striped32 across schemes: edit 18, bitpal 18, tstv 19; all three 17
+  edit striped16 score deficit (DP - parasail): {1: 46}
+  n - m: failing mean -3.67 (min -22, max 33); all pairs mean +0.02 (min -34, max 37)
+  n - m > 0 among failing 0.33, among all 0.48
+== prot300.tsv blosum: striped16 842, striped32 395, both 395
+## minimal reproducing pairs (random search + greedy shrink, unit costs, open = extend = 1)
+parasail_nw_striped_16 minimal pair: s1="TAA" (len 3) s2="T" (len 1): parasail -3, optimum -2, saturated 0
+  parasail_nw_scan_16 on the same pair: -2
+parasail_nw_striped_32 minimal pair: s1="TTACGGGATAAAATTATATCATCTAGGAAT" (len 30) s2="G" (len 1): parasail -30, optimum -29, saturated 0
+  parasail_nw_scan_16 on the same pair: -29
+## gap settings (affine DP with parasail's semantics, 300 000 random pairs of length 1-40 each)
+open 1 extend 1: striped16 83454, striped32 59229, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 2 extend 2: striped16 79280, striped32 56793, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 3 extend 3: striped16 79429, striped32 56921, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 2 extend 1: striped16 0, striped32 0, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 3 extend 1: striped16 0, striped32 0, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 4 extend 2: striped16 0, striped32 0, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+open 5 extend 1: striped16 0, striped32 0, scan16 0 wrong of 300000 random pairs (lengths 1-40)
+## ISA-specific entry points on the minimal pair (libparasail8 2.6.2+dfsg-2ubuntu3)
+parasail_nw_striped_16 (dispatcher)    TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_striped_sse2_128_16        TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_striped_sse41_128_16       TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_striped_avx2_256_16        TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_striped_sse2_128_32        TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_striped_avx2_256_32        TAA vs T, open=extend=1: -3 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw_scan_16 (dispatcher)       TAA vs T, open=extend=1: -2 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+parasail_nw (scalar reference)         TAA vs T, open=extend=1: -2 (optimum -2)
+                                       TAA vs T, open=2 extend=1: -3 (optimum -3)
+2.6.2+dfsg-2ubuntu3

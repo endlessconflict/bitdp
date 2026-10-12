@@ -1,0 +1,26 @@
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.164 s, 27.23 GCUPS
+scalar check: 128 hits expected, 0 guides disagree; scalar DP took 20.598 s (0.22 GCUPS)
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.370 s, 12.05 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.163 s, 27.41 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.547 s, 8.14 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.236 s, 18.92 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.374 s, 11.91 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.167 s, 26.71 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.539 s, 8.27 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.227 s, 19.65 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.374 s, 11.92 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.165 s, 26.99 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.565 s, 7.89 GCUPS
+genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.225 s, 19.78 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.824 s, 10.82 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.351 s, 25.40 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.100 s, 8.10 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.464 s, 19.23 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.748 s, 11.91 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.325 s, 27.40 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.122 s, 7.94 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.458 s, 19.45 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.727 s, 12.25 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.329 s, 27.11 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.119 s, 7.97 GCUPS
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.479 s, 18.60 GCUPS

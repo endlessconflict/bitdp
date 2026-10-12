@@ -1,0 +1,274 @@
+# power start 2026-10-10T17:14:34: BatteryStatus=2 (2 = on AC), charge=100 %, scheme (Balanced)
+# E10 session 2026-10-10T17:14:35-05:00; bitdp-bench from  (AVX2: -Dcpu=x86_64_v3, AVX-512: -Dcpu=znver4; '1 pair' = the znver4 build without batch)
+# baselines.c, ksw2_baseline.c from the same commit, gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0, -O3 -march=native; ksw2 289609b
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+## Table 4 (all against all)
+== T4 edit 150 bp; bitdp AVX2 total: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2424 gcups=74.253 ops_per_word=14
+totals edit-avx2: BGSA 65920019, bitdp 65920019 -> MATCH
+[T4 edit 150 BGSA edit-avx2] rep 1: cal GCUPS is 109.99
+[T4 edit 150 bitdp AVX2] rep 1: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2444 gcups=73.648 ops_per_word=14
+[T4 edit 150 BGSA edit-avx2] rep 2: cal GCUPS is 110.85
+[T4 edit 150 bitdp AVX2] rep 2: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2447 gcups=73.546 ops_per_word=14
+[T4 edit 150 BGSA edit-avx2] rep 3: cal GCUPS is 112.77
+[T4 edit 150 bitdp AVX2] rep 3: bitdp-group4 edit pairs=800000 cost_sum=65920019 seconds=0.2457 gcups=73.270 ops_per_word=14
+== T4 bitpal 150 bp; bitdp AVX2 total: bitdp-group4 bitpal pairs=800000 cost_sum=109959759 seconds=2.1294 gcups=8.453 ops_per_word=181
+totals bitpal-packed-avx2: BGSA -109959759, bitdp 109959759 -> MATCH
+totals bitpal-nonpacked-avx2: BGSA -109959759, bitdp 109959759 -> MATCH
+[T4 bitpal 150 BGSA bitpal-packed-avx2] rep 1: cal GCUPS is 13.00
+[T4 bitpal 150 BGSA bitpal-nonpacked-avx2] rep 1: cal GCUPS is 8.29
+[T4 bitpal 150 bitdp AVX2] rep 1: bitdp-group4 bitpal pairs=800000 cost_sum=109959759 seconds=2.1995 gcups=8.184 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx2] rep 2: cal GCUPS is 12.52
+[T4 bitpal 150 BGSA bitpal-nonpacked-avx2] rep 2: cal GCUPS is 8.21
+[T4 bitpal 150 bitdp AVX2] rep 2: bitdp-group4 bitpal pairs=800000 cost_sum=109959759 seconds=2.2096 gcups=8.146 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx2] rep 3: cal GCUPS is 12.68
+[T4 bitpal 150 BGSA bitpal-nonpacked-avx2] rep 3: cal GCUPS is 8.53
+[T4 bitpal 150 bitdp AVX2] rep 3: bitdp-group4 bitpal pairs=800000 cost_sum=109959759 seconds=2.2501 gcups=7.999 ops_per_word=181
+== T4 tstv 150 bp; bitdp AVX2 total: bitdp-group4 tstv pairs=800000 cost_sum=110378200 seconds=0.5377 gcups=33.478 ops_per_word=51
+[T4 tstv 150 bitdp AVX2] rep 1: bitdp-group4 tstv pairs=800000 cost_sum=110378200 seconds=0.6305 gcups=28.550 ops_per_word=51
+[T4 tstv 150 bitdp AVX-512] rep 1: bitdp-group8 tstv pairs=800000 cost_sum=110378200 seconds=0.4318 gcups=41.684 ops_per_word=51
+[T4 tstv 150 bitdp AVX2] rep 2: bitdp-group4 tstv pairs=800000 cost_sum=110378200 seconds=0.5621 gcups=32.021 ops_per_word=51
+[T4 tstv 150 bitdp AVX-512] rep 2: bitdp-group8 tstv pairs=800000 cost_sum=110378200 seconds=0.4045 gcups=44.500 ops_per_word=51
+[T4 tstv 150 bitdp AVX2] rep 3: bitdp-group4 tstv pairs=800000 cost_sum=110378200 seconds=0.6638 gcups=27.116 ops_per_word=51
+[T4 tstv 150 bitdp AVX-512] rep 3: bitdp-group8 tstv pairs=800000 cost_sum=110378200 seconds=0.4224 gcups=42.614 ops_per_word=51
+== T4 edit 1000 bp; bitdp AVX2 total: bitdp-group4 edit pairs=20000 cost_sum=10514872 seconds=0.1731 gcups=115.534 ops_per_word=14
+totals edit-avx2: BGSA 10514872, bitdp 10514872 -> MATCH
+[T4 edit 1000 BGSA edit-avx2] rep 1: cal GCUPS is 118.26
+[T4 edit 1000 bitdp AVX2] rep 1: bitdp-group4 edit pairs=20000 cost_sum=10514872 seconds=0.1741 gcups=114.862 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx2] rep 2: cal GCUPS is 104.45
+[T4 edit 1000 bitdp AVX2] rep 2: bitdp-group4 edit pairs=20000 cost_sum=10514872 seconds=0.1695 gcups=117.992 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx2] rep 3: cal GCUPS is 114.31
+[T4 edit 1000 bitdp AVX2] rep 3: bitdp-group4 edit pairs=20000 cost_sum=10514872 seconds=0.1780 gcups=112.367 ops_per_word=14
+== T4 bitpal 1000 bp; bitdp AVX2 total: bitdp-group4 bitpal pairs=20000 cost_sum=15945808 seconds=1.7721 gcups=11.286 ops_per_word=181
+totals bitpal-packed-avx2: BGSA -15945808, bitdp 15945808 -> MATCH
+totals bitpal-nonpacked-avx2: BGSA -15945808, bitdp 15945808 -> MATCH
+[T4 bitpal 1000 BGSA bitpal-packed-avx2] rep 1: cal GCUPS is 13.65
+[T4 bitpal 1000 BGSA bitpal-nonpacked-avx2] rep 1: cal GCUPS is 8.88
+[T4 bitpal 1000 bitdp AVX2] rep 1: bitdp-group4 bitpal pairs=20000 cost_sum=15945808 seconds=1.7564 gcups=11.387 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx2] rep 2: cal GCUPS is 13.72
+[T4 bitpal 1000 BGSA bitpal-nonpacked-avx2] rep 2: cal GCUPS is 8.63
+[T4 bitpal 1000 bitdp AVX2] rep 2: bitdp-group4 bitpal pairs=20000 cost_sum=15945808 seconds=1.7571 gcups=11.382 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx2] rep 3: cal GCUPS is 13.94
+[T4 bitpal 1000 BGSA bitpal-nonpacked-avx2] rep 3: cal GCUPS is 8.81
+[T4 bitpal 1000 bitdp AVX2] rep 3: bitdp-group4 bitpal pairs=20000 cost_sum=15945808 seconds=1.8895 gcups=10.585 ops_per_word=181
+== T4 tstv 1000 bp; bitdp AVX2 total: bitdp-group4 tstv pairs=20000 cost_sum=17603035 seconds=0.4173 gcups=47.929 ops_per_word=51
+[T4 tstv 1000 bitdp AVX2] rep 1: bitdp-group4 tstv pairs=20000 cost_sum=17603035 seconds=0.4190 gcups=47.729 ops_per_word=51
+[T4 tstv 1000 bitdp AVX-512] rep 1: bitdp-group8 tstv pairs=20000 cost_sum=17603035 seconds=0.3250 gcups=61.536 ops_per_word=51
+[T4 tstv 1000 bitdp AVX2] rep 2: bitdp-group4 tstv pairs=20000 cost_sum=17603035 seconds=0.4120 gcups=48.538 ops_per_word=51
+[T4 tstv 1000 bitdp AVX-512] rep 2: bitdp-group8 tstv pairs=20000 cost_sum=17603035 seconds=0.3219 gcups=62.130 ops_per_word=51
+[T4 tstv 1000 bitdp AVX2] rep 3: bitdp-group4 tstv pairs=20000 cost_sum=17603035 seconds=0.4141 gcups=48.295 ops_per_word=51
+[T4 tstv 1000 bitdp AVX-512] rep 3: bitdp-group8 tstv pairs=20000 cost_sum=17603035 seconds=0.3193 gcups=62.636 ops_per_word=51
+## Table 5 (independent pairs)
+== T5 dna150 edit
+[T5 dna150 edit bitdp 1pair] rep 1: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2290 gcups=9.827 ops_per_word=14
+[T5 dna150 edit bitdp AVX2] rep 1: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1427 gcups=15.767 ops_per_word=14
+[T5 dna150 edit bitdp AVX-512] rep 1: bitdp-batch8 edit pairs=100000 cost_sum=1316060 seconds=0.1579 gcups=14.249 ops_per_word=14
+[T5 dna150 edit edlib] rep 1: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3148 gcups=7.148
+[T5 dna150 edit ksw2] rep 1: ksw2_extz2_sse edit pairs=100000 cost_sum=1316060 seconds=1.4957 gcups=1.504
+[T5 dna150 edit parasail scan16] rep 1: scan16 edit pairs=100000 cost_sum=1316060 seconds=1.0070 gcups=2.234
+[T5 dna150 edit parasail diag16] rep 1: diag16 edit pairs=100000 cost_sum=1316060 seconds=1.2103 gcups=1.859
+[T5 dna150 edit parasail striped16] rep 1: striped16 edit pairs=100000 cost_sum=1316488 seconds=0.4430 gcups=5.079
+[T5 dna150 edit bitdp 1pair] rep 2: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2209 gcups=10.185 ops_per_word=14
+[T5 dna150 edit bitdp AVX2] rep 2: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1449 gcups=15.529 ops_per_word=14
+[T5 dna150 edit bitdp AVX-512] rep 2: bitdp-batch8 edit pairs=100000 cost_sum=1316060 seconds=0.1639 gcups=13.731 ops_per_word=14
+[T5 dna150 edit edlib] rep 2: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3148 gcups=7.147
+[T5 dna150 edit ksw2] rep 2: ksw2_extz2_sse edit pairs=100000 cost_sum=1316060 seconds=1.4962 gcups=1.504
+[T5 dna150 edit parasail scan16] rep 2: scan16 edit pairs=100000 cost_sum=1316060 seconds=1.0228 gcups=2.200
+[T5 dna150 edit parasail diag16] rep 2: diag16 edit pairs=100000 cost_sum=1316060 seconds=1.1613 gcups=1.937
+[T5 dna150 edit parasail striped16] rep 2: striped16 edit pairs=100000 cost_sum=1316488 seconds=0.4295 gcups=5.238
+[T5 dna150 edit bitdp 1pair] rep 3: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2321 gcups=9.695 ops_per_word=14
+[T5 dna150 edit bitdp AVX2] rep 3: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1470 gcups=15.304 ops_per_word=14
+[T5 dna150 edit bitdp AVX-512] rep 3: bitdp-batch8 edit pairs=100000 cost_sum=1316060 seconds=0.1571 gcups=14.325 ops_per_word=14
+[T5 dna150 edit edlib] rep 3: edlib edit pairs=100000 cost_sum=1316060 seconds=0.3450 gcups=6.521
+[T5 dna150 edit ksw2] rep 3: ksw2_extz2_sse edit pairs=100000 cost_sum=1316060 seconds=1.4705 gcups=1.530
+[T5 dna150 edit parasail scan16] rep 3: scan16 edit pairs=100000 cost_sum=1316060 seconds=1.0146 gcups=2.217
+[T5 dna150 edit parasail diag16] rep 3: diag16 edit pairs=100000 cost_sum=1316060 seconds=1.1759 gcups=1.913
+[T5 dna150 edit parasail striped16] rep 3: striped16 edit pairs=100000 cost_sum=1316488 seconds=0.4373 gcups=5.145
+== T5 dna150 bitpal
+[T5 dna150 bitpal bitdp 1pair] rep 1: bitdp bitpal pairs=100000 cost_sum=-22568952 seconds=1.2109 gcups=1.858 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX2] rep 1: bitdp-batch4 bitpal pairs=100000 cost_sum=-22568952 seconds=0.4133 gcups=5.444 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX-512] rep 1: bitdp-batch8 bitpal pairs=100000 cost_sum=-22568952 seconds=0.3404 gcups=6.610 ops_per_word=181
+[T5 dna150 bitpal ksw2] rep 1: ksw2_extz2_sse bitpal pairs=100000 cost_sum=-22568952 seconds=1.6707 gcups=1.347
+[T5 dna150 bitpal parasail scan16] rep 1: scan16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.0110 gcups=2.225
+[T5 dna150 bitpal parasail diag16] rep 1: diag16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.1796 gcups=1.907
+[T5 dna150 bitpal parasail striped16] rep 1: striped16 bitpal pairs=100000 cost_sum=-22566910 seconds=0.4272 gcups=5.267
+[T5 dna150 bitpal bitdp 1pair] rep 2: bitdp bitpal pairs=100000 cost_sum=-22568952 seconds=1.2384 gcups=1.817 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX2] rep 2: bitdp-batch4 bitpal pairs=100000 cost_sum=-22568952 seconds=0.4127 gcups=5.452 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX-512] rep 2: bitdp-batch8 bitpal pairs=100000 cost_sum=-22568952 seconds=0.3628 gcups=6.201 ops_per_word=181
+[T5 dna150 bitpal ksw2] rep 2: ksw2_extz2_sse bitpal pairs=100000 cost_sum=-22568952 seconds=1.7268 gcups=1.303
+[T5 dna150 bitpal parasail scan16] rep 2: scan16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.0325 gcups=2.179
+[T5 dna150 bitpal parasail diag16] rep 2: diag16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.2374 gcups=1.818
+[T5 dna150 bitpal parasail striped16] rep 2: striped16 bitpal pairs=100000 cost_sum=-22566910 seconds=0.4325 gcups=5.202
+[T5 dna150 bitpal bitdp 1pair] rep 3: bitdp bitpal pairs=100000 cost_sum=-22568952 seconds=1.3283 gcups=1.694 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX2] rep 3: bitdp-batch4 bitpal pairs=100000 cost_sum=-22568952 seconds=0.4175 gcups=5.389 ops_per_word=181
+[T5 dna150 bitpal bitdp AVX-512] rep 3: bitdp-batch8 bitpal pairs=100000 cost_sum=-22568952 seconds=0.3472 gcups=6.480 ops_per_word=181
+[T5 dna150 bitpal ksw2] rep 3: ksw2_extz2_sse bitpal pairs=100000 cost_sum=-22568952 seconds=1.7247 gcups=1.305
+[T5 dna150 bitpal parasail scan16] rep 3: scan16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.0289 gcups=2.187
+[T5 dna150 bitpal parasail diag16] rep 3: diag16 bitpal pairs=100000 cost_sum=-22568952 seconds=1.2964 gcups=1.735
+[T5 dna150 bitpal parasail striped16] rep 3: striped16 bitpal pairs=100000 cost_sum=-22566910 seconds=0.4710 gcups=4.777
+== T5 dna150 tstv
+[T5 dna150 tstv bitdp 1pair] rep 1: bitdp tstv pairs=100000 cost_sum=2461882 seconds=0.4677 gcups=4.811 ops_per_word=51
+[T5 dna150 tstv bitdp AVX2] rep 1: bitdp-batch4 tstv pairs=100000 cost_sum=2461882 seconds=0.2100 gcups=10.713 ops_per_word=51
+[T5 dna150 tstv bitdp AVX-512] rep 1: bitdp-batch8 tstv pairs=100000 cost_sum=2461882 seconds=0.2074 gcups=10.849 ops_per_word=51
+[T5 dna150 tstv ksw2] rep 1: ksw2_extz2_sse tstv pairs=100000 cost_sum=2461882 seconds=2.9746 gcups=0.756
+[T5 dna150 tstv parasail scan16] rep 1: scan16 tstv pairs=100000 cost_sum=2461882 seconds=1.0115 gcups=2.224
+[T5 dna150 tstv parasail diag16] rep 1: diag16 tstv pairs=100000 cost_sum=2461882 seconds=1.1893 gcups=1.892
+[T5 dna150 tstv parasail striped16] rep 1: striped16 tstv pairs=100000 cost_sum=2462460 seconds=0.4300 gcups=5.233
+[T5 dna150 tstv bitdp 1pair] rep 2: bitdp tstv pairs=100000 cost_sum=2461882 seconds=0.4298 gcups=5.235 ops_per_word=51
+[T5 dna150 tstv bitdp AVX2] rep 2: bitdp-batch4 tstv pairs=100000 cost_sum=2461882 seconds=0.2149 gcups=10.471 ops_per_word=51
+[T5 dna150 tstv bitdp AVX-512] rep 2: bitdp-batch8 tstv pairs=100000 cost_sum=2461882 seconds=0.2095 gcups=10.741 ops_per_word=51
+[T5 dna150 tstv ksw2] rep 2: ksw2_extz2_sse tstv pairs=100000 cost_sum=2461882 seconds=3.1141 gcups=0.723
+[T5 dna150 tstv parasail scan16] rep 2: scan16 tstv pairs=100000 cost_sum=2461882 seconds=1.0731 gcups=2.097
+[T5 dna150 tstv parasail diag16] rep 2: diag16 tstv pairs=100000 cost_sum=2461882 seconds=1.1997 gcups=1.875
+[T5 dna150 tstv parasail striped16] rep 2: striped16 tstv pairs=100000 cost_sum=2462460 seconds=0.4346 gcups=5.178
+[T5 dna150 tstv bitdp 1pair] rep 3: bitdp tstv pairs=100000 cost_sum=2461882 seconds=0.4396 gcups=5.118 ops_per_word=51
+[T5 dna150 tstv bitdp AVX2] rep 3: bitdp-batch4 tstv pairs=100000 cost_sum=2461882 seconds=0.2096 gcups=10.733 ops_per_word=51
+[T5 dna150 tstv bitdp AVX-512] rep 3: bitdp-batch8 tstv pairs=100000 cost_sum=2461882 seconds=0.2190 gcups=10.272 ops_per_word=51
+[T5 dna150 tstv ksw2] rep 3: ksw2_extz2_sse tstv pairs=100000 cost_sum=2461882 seconds=3.1576 gcups=0.713
+[T5 dna150 tstv parasail scan16] rep 3: scan16 tstv pairs=100000 cost_sum=2461882 seconds=1.0195 gcups=2.207
+[T5 dna150 tstv parasail diag16] rep 3: diag16 tstv pairs=100000 cost_sum=2461882 seconds=1.2572 gcups=1.790
+[T5 dna150 tstv parasail striped16] rep 3: striped16 tstv pairs=100000 cost_sum=2462460 seconds=0.4245 gcups=5.300
+== T5 dna1000 edit
+[T5 dna1000 edit bitdp 1pair] rep 1: bitdp edit pairs=5000 cost_sum=641901 seconds=0.2101 gcups=23.794 ops_per_word=14
+[T5 dna1000 edit bitdp AVX2] rep 1: bitdp-batch4 edit pairs=5000 cost_sum=641901 seconds=0.0872 gcups=57.372 ops_per_word=14
+[T5 dna1000 edit bitdp AVX-512] rep 1: bitdp-batch8 edit pairs=5000 cost_sum=641901 seconds=0.0887 gcups=56.363 ops_per_word=14
+[T5 dna1000 edit edlib] rep 1: edlib edit pairs=5000 cost_sum=641901 seconds=0.1962 gcups=25.487
+[T5 dna1000 edit ksw2] rep 1: ksw2_extz2_sse edit pairs=5000 cost_sum=641901 seconds=2.0942 gcups=2.388
+[T5 dna1000 edit parasail scan16] rep 1: scan16 edit pairs=5000 cost_sum=641901 seconds=0.9295 gcups=5.379
+[T5 dna1000 edit parasail diag16] rep 1: diag16 edit pairs=5000 cost_sum=641901 seconds=2.2108 gcups=2.262
+[T5 dna1000 edit parasail striped16] rep 1: striped16 edit pairs=5000 cost_sum=641947 seconds=0.5586 gcups=8.952
+[T5 dna1000 edit bitdp 1pair] rep 2: bitdp edit pairs=5000 cost_sum=641901 seconds=0.2123 gcups=23.554 ops_per_word=14
+[T5 dna1000 edit bitdp AVX2] rep 2: bitdp-batch4 edit pairs=5000 cost_sum=641901 seconds=0.0821 gcups=60.878 ops_per_word=14
+[T5 dna1000 edit bitdp AVX-512] rep 2: bitdp-batch8 edit pairs=5000 cost_sum=641901 seconds=0.0823 gcups=60.781 ops_per_word=14
+[T5 dna1000 edit edlib] rep 2: edlib edit pairs=5000 cost_sum=641901 seconds=0.2052 gcups=24.372
+[T5 dna1000 edit ksw2] rep 2: ksw2_extz2_sse edit pairs=5000 cost_sum=641901 seconds=2.2698 gcups=2.203
+[T5 dna1000 edit parasail scan16] rep 2: scan16 edit pairs=5000 cost_sum=641901 seconds=0.9666 gcups=5.173
+[T5 dna1000 edit parasail diag16] rep 2: diag16 edit pairs=5000 cost_sum=641901 seconds=2.2960 gcups=2.178
+[T5 dna1000 edit parasail striped16] rep 2: striped16 edit pairs=5000 cost_sum=641947 seconds=0.5579 gcups=8.963
+[T5 dna1000 edit bitdp 1pair] rep 3: bitdp edit pairs=5000 cost_sum=641901 seconds=0.2150 gcups=23.258 ops_per_word=14
+[T5 dna1000 edit bitdp AVX2] rep 3: bitdp-batch4 edit pairs=5000 cost_sum=641901 seconds=0.0778 gcups=64.248 ops_per_word=14
+[T5 dna1000 edit bitdp AVX-512] rep 3: bitdp-batch8 edit pairs=5000 cost_sum=641901 seconds=0.0827 gcups=60.438 ops_per_word=14
+[T5 dna1000 edit edlib] rep 3: edlib edit pairs=5000 cost_sum=641901 seconds=0.1913 gcups=26.138
+[T5 dna1000 edit ksw2] rep 3: ksw2_extz2_sse edit pairs=5000 cost_sum=641901 seconds=2.3326 gcups=2.144
+[T5 dna1000 edit parasail scan16] rep 3: scan16 edit pairs=5000 cost_sum=641901 seconds=0.9467 gcups=5.281
+[T5 dna1000 edit parasail diag16] rep 3: diag16 edit pairs=5000 cost_sum=641901 seconds=2.3388 gcups=2.138
+[T5 dna1000 edit parasail striped16] rep 3: striped16 edit pairs=5000 cost_sum=641947 seconds=0.5968 gcups=8.378
+== T5 dna1000 bitpal
+[T5 dna1000 bitpal bitdp 1pair] rep 1: bitdp bitpal pairs=5000 cost_sum=-6398796 seconds=2.0822 gcups=2.401 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX2] rep 1: bitdp-batch4 bitpal pairs=5000 cost_sum=-6398796 seconds=0.5167 gcups=9.678 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX-512] rep 1: bitdp-batch8 bitpal pairs=5000 cost_sum=-6398796 seconds=0.3809 gcups=13.128 ops_per_word=181
+[T5 dna1000 bitpal ksw2] rep 1: ksw2_extz2_sse bitpal pairs=5000 cost_sum=-6398796 seconds=2.1764 gcups=2.297
+[T5 dna1000 bitpal parasail scan16] rep 1: scan16 bitpal pairs=5000 cost_sum=-6398796 seconds=0.9563 gcups=5.229
+[T5 dna1000 bitpal parasail diag16] rep 1: diag16 bitpal pairs=5000 cost_sum=-6398796 seconds=2.5017 gcups=1.999
+[T5 dna1000 bitpal parasail striped16] rep 1: striped16 bitpal pairs=5000 cost_sum=-6398574 seconds=0.5583 gcups=8.956
+[T5 dna1000 bitpal bitdp 1pair] rep 2: bitdp bitpal pairs=5000 cost_sum=-6398796 seconds=2.0493 gcups=2.440 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX2] rep 2: bitdp-batch4 bitpal pairs=5000 cost_sum=-6398796 seconds=0.5557 gcups=8.999 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX-512] rep 2: bitdp-batch8 bitpal pairs=5000 cost_sum=-6398796 seconds=0.3824 gcups=13.077 ops_per_word=181
+[T5 dna1000 bitpal ksw2] rep 2: ksw2_extz2_sse bitpal pairs=5000 cost_sum=-6398796 seconds=2.1933 gcups=2.280
+[T5 dna1000 bitpal parasail scan16] rep 2: scan16 bitpal pairs=5000 cost_sum=-6398796 seconds=0.9249 gcups=5.406
+[T5 dna1000 bitpal parasail diag16] rep 2: diag16 bitpal pairs=5000 cost_sum=-6398796 seconds=2.2728 gcups=2.200
+[T5 dna1000 bitpal parasail striped16] rep 2: striped16 bitpal pairs=5000 cost_sum=-6398574 seconds=0.5619 gcups=8.898
+[T5 dna1000 bitpal bitdp 1pair] rep 3: bitdp bitpal pairs=5000 cost_sum=-6398796 seconds=2.0355 gcups=2.456 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX2] rep 3: bitdp-batch4 bitpal pairs=5000 cost_sum=-6398796 seconds=0.5119 gcups=9.767 ops_per_word=181
+[T5 dna1000 bitpal bitdp AVX-512] rep 3: bitdp-batch8 bitpal pairs=5000 cost_sum=-6398796 seconds=0.3888 gcups=12.862 ops_per_word=181
+[T5 dna1000 bitpal ksw2] rep 3: ksw2_extz2_sse bitpal pairs=5000 cost_sum=-6398796 seconds=2.2219 gcups=2.250
+[T5 dna1000 bitpal parasail scan16] rep 3: scan16 bitpal pairs=5000 cost_sum=-6398796 seconds=0.9247 gcups=5.407
+[T5 dna1000 bitpal parasail diag16] rep 3: diag16 bitpal pairs=5000 cost_sum=-6398796 seconds=2.3035 gcups=2.171
+[T5 dna1000 bitpal parasail striped16] rep 3: striped16 bitpal pairs=5000 cost_sum=-6398574 seconds=0.5712 gcups=8.753
+== T5 dna1000 tstv
+[T5 dna1000 tstv bitdp 1pair] rep 1: bitdp tstv pairs=5000 cost_sum=1189034 seconds=0.5570 gcups=8.976 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX2] rep 1: bitdp-batch4 tstv pairs=5000 cost_sum=1189034 seconds=0.1741 gcups=28.717 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX-512] rep 1: bitdp-batch8 tstv pairs=5000 cost_sum=1189034 seconds=0.1518 gcups=32.948 ops_per_word=51
+[T5 dna1000 tstv ksw2] rep 1: ksw2_extz2_sse tstv pairs=5000 cost_sum=1189034 seconds=5.3998 gcups=0.926
+[T5 dna1000 tstv parasail scan16] rep 1: scan16 tstv pairs=5000 cost_sum=1189034 seconds=1.0208 gcups=4.898
+[T5 dna1000 tstv parasail diag16] rep 1: diag16 tstv pairs=5000 cost_sum=1189034 seconds=2.3496 gcups=2.128
+[T5 dna1000 tstv parasail striped16] rep 1: striped16 tstv pairs=5000 cost_sum=1189106 seconds=0.6290 gcups=7.949
+[T5 dna1000 tstv bitdp 1pair] rep 2: bitdp tstv pairs=5000 cost_sum=1189034 seconds=0.5865 gcups=8.525 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX2] rep 2: bitdp-batch4 tstv pairs=5000 cost_sum=1189034 seconds=0.1564 gcups=31.962 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX-512] rep 2: bitdp-batch8 tstv pairs=5000 cost_sum=1189034 seconds=0.1593 gcups=31.391 ops_per_word=51
+[T5 dna1000 tstv ksw2] rep 2: ksw2_extz2_sse tstv pairs=5000 cost_sum=1189034 seconds=5.2169 gcups=0.958
+[T5 dna1000 tstv parasail scan16] rep 2: scan16 tstv pairs=5000 cost_sum=1189034 seconds=0.9222 gcups=5.422
+[T5 dna1000 tstv parasail diag16] rep 2: diag16 tstv pairs=5000 cost_sum=1189034 seconds=2.3498 gcups=2.128
+[T5 dna1000 tstv parasail striped16] rep 2: striped16 tstv pairs=5000 cost_sum=1189106 seconds=0.6214 gcups=8.047
+[T5 dna1000 tstv bitdp 1pair] rep 3: bitdp tstv pairs=5000 cost_sum=1189034 seconds=0.4943 gcups=10.115 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX2] rep 3: bitdp-batch4 tstv pairs=5000 cost_sum=1189034 seconds=0.1612 gcups=31.017 ops_per_word=51
+[T5 dna1000 tstv bitdp AVX-512] rep 3: bitdp-batch8 tstv pairs=5000 cost_sum=1189034 seconds=0.1521 gcups=32.871 ops_per_word=51
+[T5 dna1000 tstv ksw2] rep 3: ksw2_extz2_sse tstv pairs=5000 cost_sum=1189034 seconds=5.0644 gcups=0.987
+[T5 dna1000 tstv parasail scan16] rep 3: scan16 tstv pairs=5000 cost_sum=1189034 seconds=0.9093 gcups=5.499
+[T5 dna1000 tstv parasail diag16] rep 3: diag16 tstv pairs=5000 cost_sum=1189034 seconds=2.3330 gcups=2.143
+[T5 dna1000 tstv parasail striped16] rep 3: striped16 tstv pairs=5000 cost_sum=1189106 seconds=0.5800 gcups=8.621
+== T5 prot300 blosum
+[T5 prot300 blosum bitdp 1pair] rep 1: bitdp blosum pairs=10000 cost_sum=-11641441 seconds=1.6690 gcups=0.539 ops_per_word=799
+[T5 prot300 blosum bitdp AVX2] rep 1: bitdp-batch4 blosum pairs=10000 cost_sum=-11641441 seconds=0.7380 gcups=1.220 ops_per_word=799
+[T5 prot300 blosum bitdp AVX-512] rep 1: bitdp-batch8 blosum pairs=10000 cost_sum=-11641441 seconds=0.6573 gcups=1.370 ops_per_word=799
+[T5 prot300 blosum parasail scan16] rep 1: scan16 blosum pairs=10000 cost_sum=-11641441 seconds=0.3266 gcups=2.756
+[T5 prot300 blosum parasail diag16] rep 1: diag16 blosum pairs=10000 cost_sum=-11641441 seconds=0.4700 gcups=1.916
+[T5 prot300 blosum parasail striped16] rep 1: striped16 blosum pairs=10000 cost_sum=-11637849 seconds=0.1846 gcups=4.877
+[T5 prot300 blosum bitdp 1pair] rep 2: bitdp blosum pairs=10000 cost_sum=-11641441 seconds=1.8336 gcups=0.491 ops_per_word=799
+[T5 prot300 blosum bitdp AVX2] rep 2: bitdp-batch4 blosum pairs=10000 cost_sum=-11641441 seconds=1.0192 gcups=0.883 ops_per_word=799
+[T5 prot300 blosum bitdp AVX-512] rep 2: bitdp-batch8 blosum pairs=10000 cost_sum=-11641441 seconds=0.6477 gcups=1.390 ops_per_word=799
+[T5 prot300 blosum parasail scan16] rep 2: scan16 blosum pairs=10000 cost_sum=-11641441 seconds=0.3190 gcups=2.822
+[T5 prot300 blosum parasail diag16] rep 2: diag16 blosum pairs=10000 cost_sum=-11641441 seconds=0.4736 gcups=1.901
+[T5 prot300 blosum parasail striped16] rep 2: striped16 blosum pairs=10000 cost_sum=-11637849 seconds=0.1923 gcups=4.681
+[T5 prot300 blosum bitdp 1pair] rep 3: bitdp blosum pairs=10000 cost_sum=-11641441 seconds=1.8928 gcups=0.476 ops_per_word=799
+[T5 prot300 blosum bitdp AVX2] rep 3: bitdp-batch4 blosum pairs=10000 cost_sum=-11641441 seconds=0.7509 gcups=1.199 ops_per_word=799
+[T5 prot300 blosum bitdp AVX-512] rep 3: bitdp-batch8 blosum pairs=10000 cost_sum=-11641441 seconds=0.6338 gcups=1.420 ops_per_word=799
+[T5 prot300 blosum parasail scan16] rep 3: scan16 blosum pairs=10000 cost_sum=-11641441 seconds=0.3053 gcups=2.949
+[T5 prot300 blosum parasail diag16] rep 3: diag16 blosum pairs=10000 cost_sum=-11641441 seconds=0.4225 gcups=2.131
+[T5 prot300 blosum parasail striped16] rep 3: striped16 blosum pairs=10000 cost_sum=-11637849 seconds=0.1915 gcups=4.702
+# E10 end 2026-10-10T17:17:59-05:00
+# power end 2026-10-10T17:17:59: BatteryStatus=2 (2 = on AC), charge=100 %, scheme (Balanced)
+# power reads-start 2026-10-10T17:25:53: BatteryStatus=2 (2 = on AC), charge=100 %, scheme (Balanced)
+# E10 reads 2026-10-10T17:25:59-05:00; bitdp-bench 0af2499; 193660 pairs
+== T6 edit
+[T6 reads edit bitdp 1pair] rep 1: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2657 gcups=7.289 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 1: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1919 gcups=10.090 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 1: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.1849 gcups=10.475 ops_per_word=14
+[T6 reads edit edlib] rep 1: edlib edit pairs=193660 cost_sum=38308 seconds=0.4020 gcups=4.818
+[T6 reads edit ksw2] rep 1: ksw2_extz2_sse edit pairs=193660 cost_sum=38308 seconds=1.2526 gcups=1.546
+[T6 reads edit parasail scan16] rep 1: scan16 edit pairs=193660 cost_sum=38308 seconds=1.2139 gcups=1.595
+[T6 reads edit bitdp 1pair] rep 2: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2484 gcups=7.797 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 2: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1763 gcups=10.984 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 2: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.1828 gcups=10.596 ops_per_word=14
+[T6 reads edit edlib] rep 2: edlib edit pairs=193660 cost_sum=38308 seconds=0.4046 gcups=4.787
+[T6 reads edit ksw2] rep 2: ksw2_extz2_sse edit pairs=193660 cost_sum=38308 seconds=1.2349 gcups=1.568
+[T6 reads edit parasail scan16] rep 2: scan16 edit pairs=193660 cost_sum=38308 seconds=1.2128 gcups=1.597
+[T6 reads edit bitdp 1pair] rep 3: bitdp edit pairs=193660 cost_sum=38308 seconds=0.2515 gcups=7.699 ops_per_word=14
+[T6 reads edit bitdp AVX2] rep 3: bitdp-batch4 edit pairs=193660 cost_sum=38308 seconds=0.1737 gcups=11.152 ops_per_word=14
+[T6 reads edit bitdp AVX-512] rep 3: bitdp-batch8 edit pairs=193660 cost_sum=38308 seconds=0.1950 gcups=9.930 ops_per_word=14
+[T6 reads edit edlib] rep 3: edlib edit pairs=193660 cost_sum=38308 seconds=0.4065 gcups=4.764
+[T6 reads edit ksw2] rep 3: ksw2_extz2_sse edit pairs=193660 cost_sum=38308 seconds=1.2620 gcups=1.535
+[T6 reads edit parasail scan16] rep 3: scan16 edit pairs=193660 cost_sum=38308 seconds=1.2183 gcups=1.590
+== T6 bitpal
+[T6 reads bitpal bitdp 1pair] rep 1: bitdp bitpal pairs=193660 cost_sum=-38540294 seconds=1.1627 gcups=1.666 ops_per_word=181
+[T6 reads bitpal bitdp AVX2] rep 1: bitdp-batch4 bitpal pairs=193660 cost_sum=-38540294 seconds=0.4253 gcups=4.554 ops_per_word=181
+[T6 reads bitpal bitdp AVX-512] rep 1: bitdp-batch8 bitpal pairs=193660 cost_sum=-38540294 seconds=0.3615 gcups=5.358 ops_per_word=181
+[T6 reads bitpal ksw2] rep 1: ksw2_extz2_sse bitpal pairs=193660 cost_sum=-38540294 seconds=1.2519 gcups=1.547
+[T6 reads bitpal parasail scan16] rep 1: scan16 bitpal pairs=193660 cost_sum=-38540294 seconds=1.2401 gcups=1.562
+[T6 reads bitpal bitdp 1pair] rep 2: bitdp bitpal pairs=193660 cost_sum=-38540294 seconds=1.2069 gcups=1.605 ops_per_word=181
+[T6 reads bitpal bitdp AVX2] rep 2: bitdp-batch4 bitpal pairs=193660 cost_sum=-38540294 seconds=0.4254 gcups=4.552 ops_per_word=181
+[T6 reads bitpal bitdp AVX-512] rep 2: bitdp-batch8 bitpal pairs=193660 cost_sum=-38540294 seconds=0.3615 gcups=5.357 ops_per_word=181
+[T6 reads bitpal ksw2] rep 2: ksw2_extz2_sse bitpal pairs=193660 cost_sum=-38540294 seconds=1.3239 gcups=1.463
+[T6 reads bitpal parasail scan16] rep 2: scan16 bitpal pairs=193660 cost_sum=-38540294 seconds=1.2266 gcups=1.579
+[T6 reads bitpal bitdp 1pair] rep 3: bitdp bitpal pairs=193660 cost_sum=-38540294 seconds=1.1785 gcups=1.643 ops_per_word=181
+[T6 reads bitpal bitdp AVX2] rep 3: bitdp-batch4 bitpal pairs=193660 cost_sum=-38540294 seconds=0.4040 gcups=4.794 ops_per_word=181
+[T6 reads bitpal bitdp AVX-512] rep 3: bitdp-batch8 bitpal pairs=193660 cost_sum=-38540294 seconds=0.3591 gcups=5.392 ops_per_word=181
+[T6 reads bitpal ksw2] rep 3: ksw2_extz2_sse bitpal pairs=193660 cost_sum=-38540294 seconds=1.2704 gcups=1.524
+[T6 reads bitpal parasail scan16] rep 3: scan16 bitpal pairs=193660 cost_sum=-38540294 seconds=1.2298 gcups=1.575
+== T6 tstv
+[T6 reads tstv bitdp 1pair] rep 1: bitdp tstv pairs=193660 cost_sum=65477 seconds=0.4377 gcups=4.424 ops_per_word=51
+[T6 reads tstv bitdp AVX2] rep 1: bitdp-batch4 tstv pairs=193660 cost_sum=65477 seconds=0.2409 gcups=8.038 ops_per_word=51
+[T6 reads tstv bitdp AVX-512] rep 1: bitdp-batch8 tstv pairs=193660 cost_sum=65477 seconds=0.2382 gcups=8.132 ops_per_word=51
+[T6 reads tstv ksw2] rep 1: ksw2_extz2_sse tstv pairs=193660 cost_sum=65477 seconds=2.3652 gcups=0.819
+[T6 reads tstv parasail scan16] rep 1: scan16 tstv pairs=193660 cost_sum=65477 seconds=1.2484 gcups=1.551
+[T6 reads tstv bitdp 1pair] rep 2: bitdp tstv pairs=193660 cost_sum=65477 seconds=0.5099 gcups=3.798 ops_per_word=51
+[T6 reads tstv bitdp AVX2] rep 2: bitdp-batch4 tstv pairs=193660 cost_sum=65477 seconds=0.2261 gcups=8.566 ops_per_word=51
+[T6 reads tstv bitdp AVX-512] rep 2: bitdp-batch8 tstv pairs=193660 cost_sum=65477 seconds=0.2620 gcups=7.392 ops_per_word=51
+[T6 reads tstv ksw2] rep 2: ksw2_extz2_sse tstv pairs=193660 cost_sum=65477 seconds=2.6441 gcups=0.732
+[T6 reads tstv parasail scan16] rep 2: scan16 tstv pairs=193660 cost_sum=65477 seconds=1.2288 gcups=1.576
+[T6 reads tstv bitdp 1pair] rep 3: bitdp tstv pairs=193660 cost_sum=65477 seconds=0.4279 gcups=4.525 ops_per_word=51
+[T6 reads tstv bitdp AVX2] rep 3: bitdp-batch4 tstv pairs=193660 cost_sum=65477 seconds=0.2419 gcups=8.005 ops_per_word=51
+[T6 reads tstv bitdp AVX-512] rep 3: bitdp-batch8 tstv pairs=193660 cost_sum=65477 seconds=0.2452 gcups=7.898 ops_per_word=51
+[T6 reads tstv ksw2] rep 3: ksw2_extz2_sse tstv pairs=193660 cost_sum=65477 seconds=2.3301 gcups=0.831
+[T6 reads tstv parasail scan16] rep 3: scan16 tstv pairs=193660 cost_sum=65477 seconds=1.2259 gcups=1.580
+# E10 reads end 2026-10-10T17:26:40-05:00
+# power reads-end 2026-10-10T17:26:40: BatteryStatus=2 (2 = on AC), charge=100 %

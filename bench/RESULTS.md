@@ -1,6 +1,6 @@
 # Results
 
-The machine is an AMD Ryzen 7 8840U (Zen 4, AVX-512), running Ubuntu under WSL2 (kernel 6.6.114.1) on one core, no threading. bitdp was built with Zig 0.16.0 (`-Doptimize=ReleaseFast`) twice, once with AVX-512 (`-Dcpu=znver4`, 8 lanes of 64 bits) and once with AVX2 only (`-Dcpu=x86_64_v3`, 4 lanes). Baselines were built with gcc 15.2.0 (`-O3 -march=native`): parasail 2.6.2 and edlib 1.2.7 from the Ubuntu packages, and BGSA from its repository (commit dffcf9e, 2022-02-24) with kernels from its own generator.
+The machine is an AMD Ryzen 7 8840U (Zen 4, AVX-512), running Ubuntu under WSL2 (kernel 6.6.114.1) on one core, no threading. bitdp was built with Zig 0.16.0 (`-Doptimize=ReleaseFast`) twice, once with AVX-512 (`-Dcpu=znver4`, 8 lanes of 64 bits) and once with AVX2 only (`-Dcpu=x86_64_v3`, 4 lanes). parasail 2.6.2 and edlib 1.2.7 are the Ubuntu library packages (not rebuilt), called from `baselines.c` compiled with gcc 15.2.0 (`-O3 -march=native`). BGSA is built from its repository (commit dffcf9e, 2022-02-24) with its own makefile and gcc 15.2.0, with `-O3 -march=native` for every build (for AVX-512, `make cc=gcc CFLAGS="-march=native -w"` replaces the makefile's `-mfma -mavx512f -mavx512cd`). On this Zen 4 machine `-march=native` also allows AVX-512VL instructions in BGSA's 256-bit code.
 
 Numbers are medians of three runs, in billions of DP cells per second, where a pair contributes pattern length times text length cells. Every run's total cost was checked against the other tools, and all totals agree except where noted.
 
@@ -10,18 +10,21 @@ Every query against every subject, all of the same length: 64 × 12 500 random 1
 
 | Scheme | Tool | 150 bp | 1 kbp |
 |---|---|---|---|
-| edit | BGSA Myers, AVX2 | 94.3 | 116.9 |
-| | bitdp, AVX2 | 68.9 | 108.9 |
-| | BGSA Myers, AVX-512 | 102.4 | 120.7 |
-| | bitdp, AVX-512 | 92.4 | 145.1 |
-| bitpal (2, -3, -5) | BGSA BitPAl packed, AVX2 | 13.0 | 14.0 |
-| | BGSA BitPAl non-packed, AVX2 | 8.6 | 9.2 |
-| | bitdp, AVX2 | 8.6 | 11.7 |
-| | bitdp, AVX-512 | 12.2 | 16.5 |
-| tstv | bitdp, AVX2 | 32.5 | 45.8 |
-| | bitdp, AVX-512 | 41.5 | 59.8 |
+| edit | BGSA Myers, AVX2 | 110.8 | 114.3 |
+| | bitdp, AVX2 | 73.5 | 114.9 |
+| | BGSA Myers, AVX-512 | 116.8 | 125.9 |
+| | bitdp, AVX-512 | 102.5 | 156.2 |
+| bitpal (2, -3, -5) | BGSA BitPAl packed, AVX2 | 12.7 | 13.7 |
+| | BGSA BitPAl non-packed, AVX2 | 8.3 | 8.8 |
+| | bitdp, AVX2 | 8.1 | 11.4 |
+| | BGSA BitPAl packed, AVX-512 (hand-written) | 15.2 | 16.4 |
+| | bitdp, AVX-512 | 12.0 | 16.3 |
+| tstv | bitdp, AVX2 | 28.6 | 48.3 |
+| | bitdp, AVX-512 | 42.6 | 62.1 |
 
-BGSA's generator produced AVX-512 BitPAl sources that do not compile (they use SSE type names), so there is no AVX-512 BitPAl row. BGSA supports only match/mismatch weights, so it has no `tstv` row.
+BGSA's generator produces AVX-512 BitPAl sources that do not compile: they declare `sse_read_t` variables, which the AVX-512 sources don't define. BGSA's repository, however, ships a hand-written AVX-512 packed BitPAl kernel for exactly (2, -3, -5) in `original/BGSA_AVX512/align_core.c`. Built from source with the same command as the AVX-512 Myers build (prebuilt binaries removed), its scores matched an independent DP on all 800 000 + 20 000 pairs, and it ran at 15.05, 15.09 and 15.23 GCUPS at 150 bp and 15.59, 15.35 and 15.87 at 1 kbp (`median3.sh`, 2026-10-09). BGSA supports only match/mismatch weights, so it has no `tstv` row.
+
+The all-against-all, pairwise and real-read tables on this page were measured plugged in, with the Windows power plan Balanced, the Windows power mode "Best power efficiency" (`bench/raw/power_mode_events.txt`) and the tools of each row alternating run by run. The AVX-512 rows for edit and (2, -3, -5) come from a session on 2026-10-12 (`bench/raw/t4_avx512_interleaved.txt`): BGSA's two AVX-512 builds, compiled with `-march=native`, and bitdp (built from 0af2499 with `-Dcpu=znver4`, the binary of the other session) alternate run by run, and the three runs of a cell differ by at most 5 % of its median. The rebuilt BGSA binaries write result files byte-identical to those of the earlier builds, and their totals equal bitdp's on all four inputs (`bench/raw/bgsa_avx512_native.txt`, which also holds an earlier measurement of these rows with each tool's three runs back to back; it is no longer used). The power mode matters: with "Best performance" the same binaries ran 1.38 to 1.47 times as fast in the same hour (`bench/raw/t4_avx512_bestperf.txt`), so rates from sessions in different modes must not be combined. Between sessions the machine's rates also drift: the earlier AVX-512 Myers build ran at 116.0 GCUPS at 150 bp on 2026-10-10, against 102.4 twelve days before (the value in this file at commit cb765b7, 2026-09-28; its individual runs were not kept). The other rows of this table, and the pairwise and real-read tables, come from a session on 2026-10-10 (`bench/raw/e10_session.txt`), with bitdp, `baselines.c` and `ksw2_baseline.c` built from commit 0af2499 and every tool's totals equal. Earlier versions of these tables (2026-09-28) combined numbers from different sessions, and their pairwise and real-read bitdp columns were measured on code from before commit 0af2499, which runs those workloads up to about twice as fast (same-session comparison of the builds in `bench/raw/e10_versions.txt` and `e10_versions2.txt`). Within a session the three runs of a cell differed by a median of 4 % of their median and by at most 28 %.
 
 ## Pairwise (distinct pattern and text per pair)
 
@@ -29,19 +32,27 @@ Pairs from `gen.py`: random patterns, and texts derived from them by substitutio
 
 | Workload | Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | ksw2 extz2_sse | parasail scan16 | parasail diag16 | parasail striped16 * |
 |---|---|---|---|---|---|---|---|---|---|
-| 100 000 pairs, 150 bp, 10 % | edit | 5.69 | 7.75 | 7.11 | 6.19 | 1.42 | 2.16 | 1.66 | 5.07 |
-| | bitpal | 1.36 | 3.80 | 4.28 | | 1.24 | 2.18 | 1.74 | 5.11 |
-| | tstv | 3.15 | 4.70 | 4.45 | | 0.72 | 2.21 | 1.72 | 5.04 |
-| 5 000 pairs, 1 kbp, 15 % | edit | 18.07 | 35.20 | 34.89 | 21.73 | 2.20 | 5.19 | 1.98 | 8.62 |
-| | bitpal | 2.14 | 8.93 | 11.30 | | 2.18 | 5.18 | 2.10 | 8.76 |
-| | tstv | 8.19 | 19.23 | 20.83 | | 0.94 | 5.18 | 1.98 | 8.83 |
-| 10 000 pairs, 300 aa, 30 % | blosum | 0.40 | 0.77 | 0.82 | | | 2.87 | 2.19 | 5.00 |
+| 100 000 pairs, 150 bp, 10 % | edit | 9.83 | 15.53 | 14.25 | 7.15 | 1.50 | 2.22 | 1.91 | 5.14 |
+| | bitpal | 1.82 | 5.44 | 6.48 |  | 1.30 | 2.19 | 1.82 | 5.20 |
+| | tstv | 5.12 | 10.71 | 10.74 |  | 0.72 | 2.21 | 1.88 | 5.23 |
+| 5 000 pairs, 1 kbp, 15 % | edit | 23.55 | 60.88 | 60.44 | 25.49 | 2.20 | 5.28 | 2.18 | 8.95 |
+| | bitpal | 2.44 | 9.68 | 13.08 |  | 2.28 | 5.41 | 2.17 | 8.90 |
+| | tstv | 8.98 | 31.02 | 32.87 |  | 0.96 | 5.42 | 2.13 | 8.05 |
+| 10 000 pairs, 300 aa, 30 % | blosum | 0.49 | 1.20 | 1.39 |  |  | 2.82 | 1.92 | 4.70 |
 
-\* parasail's striped global kernels returned a different total cost than every other tool on every workload, so they are listed but not counted as a correct baseline. On the 150 bp edit set, `parasail_nw_striped_16` scored 426 of the 100 000 pairs below their optimum. On the first such pair it returned -17 while the scan kernel, edlib, bitdp and an independent textbook DP all give -16.
+\* parasail's striped global kernels returned a different total cost than every other tool on every workload, so they are listed but not counted as a correct baseline. `parasail_check.c` compares every pair with a plain DP:
+
+| Workload | striped16 wrong | striped32 wrong | scan16 / scan32 wrong |
+|---|---|---|---|
+| 150 bp, edit / bitpal / tstv | 426 / 426 / 430 of 100 000 | 231 / 232 / 223 | 0 / 0 |
+| 1 kbp, edit / bitpal / tstv | 46 / 46 / 51 of 5 000 | 18 / 18 / 19 | 0 / 0 |
+| 300 aa, blosum | 842 of 10 000 | 395 | 0 / 0 |
+
+Every wrong score is below the optimum, and the saturation flag is never set. On short random pairs the striped kernels fail only when the gap opening penalty equals the extension penalty, i.e. for linear gaps, which parasail's README allows ("greater than or equal"); with open > extend they were correct on 4 × 300 000 pairs. A minimal case is `TAA` against `T` with match 0, mismatch -1, open = extend = 1: every striped entry point (SSE2, SSE4.1, AVX2; 16 and 32 bit) returns -3, while scan and the scalar `parasail_nw` return the optimum -2.
 
 ksw2 is the SIMD DP of minimap2 (github.com/lh3/ksw2, commit 289609b), run through `ksw_extz2_sse` in score-only mode with gap open 0 and built by `ksw2_baseline.c` with gcc 15.2.0 (`-O3 -march=native`). It uses 128-bit SSE registers. The `tstv` run needs the `KSW_EZ_GENERIC_SC` flag, because without it ksw2 reads only the match and mismatch entries of the matrix.
 
-The Ubuntu parasail build has no AVX-512 kernels, so its fair comparison is bitdp's AVX2 column. In pairwise mode the AVX-512 build gains little over AVX2 because each lane gathers its planes separately; the previous version of the kernel, which detected carries with a 64-bit overflow compare, ran pairwise AVX-512 edit about 17 % faster (45.6 against 38 GCUPS on the 1 kbp set) and AVX2 slower.
+The Ubuntu parasail build has no AVX-512 kernels, so its fair comparison is bitdp's AVX2 column. In pairwise mode the AVX-512 build gains little over AVX2 because each lane gathers its planes separately. A previous version of the kernel, which detected carries with a 64-bit overflow compare, ran pairwise AVX-512 edit faster and AVX2 slower; its measurements were not kept.
 
 ## Real reads (candidate verification)
 
@@ -49,11 +60,11 @@ Illumina reads of *E. coli* K-12 MG1655 from ENA run ERR022075 (study PRJEB2323,
 
 | Scheme | bitdp, 1 pair | bitdp, 4 lanes AVX2 | bitdp, 8 lanes AVX-512 | edlib | ksw2 extz2_sse | parasail scan16 |
 |---|---|---|---|---|---|---|
-| edit | 4.33 | 5.09 | 4.59 | 4.42 | 1.44 | 1.57 |
-| bitpal | 1.40 | 3.37 | 3.44 | | 1.55 | 1.60 |
-| tstv | 2.39 | 3.45 | 3.28 | | 0.82 | 1.60 |
+| edit | 7.70 | 10.98 | 10.47 | 4.79 | 1.55 | 1.59 |
+| bitpal | 1.64 | 4.55 | 5.36 |  | 1.52 | 1.57 |
+| tstv | 4.42 | 8.04 | 7.90 |  | 0.82 | 1.58 |
 
-All tools give the same totals (edit 38 308, bitpal -38 540 294, tstv 65 477). Pairs this short spend a large share of their time outside the column loop (pattern preparation, reading the pair), which is why every rate is lower than on the 1 kbp set. edlib bands its DP by the edit distance it finds, so near-identical pairs favour it; batched bitdp is still ahead, by 15 %.
+All tools give the same totals (edit 38 308, bitpal -38 540 294, tstv 65 477). Pairs this short spend a large share of their time outside the column loop (pattern preparation, reading the pair), which is why every rate is lower than on the 1 kbp set. edlib bands its DP by the edit distance it finds, so near-identical pairs favour it; batched bitdp is still ahead, by a factor of 2.3.
 
 ## Scaling of the derived programs
 

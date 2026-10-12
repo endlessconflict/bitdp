@@ -1,0 +1,36 @@
+# BGSA AVX-512 BitPAl check, 2026-10-09 (BGSA dffcf9e, generator.jar from the repo, README build steps: generated align_core.c into original/BGSA_AVX512, make cc=gcc)
+## generator -M 2 -I -3 -G -5 -t {packed,non-packed} -a avx512, prebuilt binaries removed, make:
+== files shipped in original/BGSA_AVX512:
+== packed: generator exit 0
+make exit 2
+ls: cannot access 'build-packed/aligner': No such file or directory
+23:    sse_read_t bitmask;
+27:    sse_read_t one = 0x00000001;
+21-    int word_sizem2 = MIC_WORD_SIZE - 2;
+22-    int i, j, k, m, n;
+23:    sse_read_t bitmask;
+24-    mic_data_t matches;
+25-    mic_data_t not_matches;
+== non-packed: generator exit 0
+make exit 2
+ls: cannot access 'build-non-packed/aligner': No such file or directory
+23:    sse_read_t bitmask;
+27:    sse_read_t one = 0x00000001;
+21-    int word_sizem1 = MIC_WORD_SIZE - 1;
+22-    int i, j, k;
+23:    sse_read_t bitmask;
+24-    mic_data_t matches;
+25-    mic_data_t not_matches;
+packed and non-packed kernels differ
+## shipped original/BGSA_AVX512 (commit 3ca4ac6, 2018-06-20): BitPAl (2,-3,-5), packed layout (word_sizem2); builds with make cc=gcc (exit 0)
+packed: diff lines vs shipped = 32
+non-packed: diff lines vs shipped = 794
+-- non-packed generated vs shipped, first differences:
+## compiler errors (build-packed/build.log, build-non-packed/build.log):
+[packed]
+align_core.c:23:5: error: unknown type name ‘sse_read_t’; did you mean ‘mic_read_t’?
+align_core.c:27:5: error: unknown type name ‘sse_read_t’; did you mean ‘mic_read_t’?
+[non-packed]
+align_core.c:23:5: error: unknown type name ‘sse_read_t’; did you mean ‘mic_read_t’?
+align_core.c:27:5: error: unknown type name ‘sse_read_t’; did you mean ‘mic_read_t’?
+[shipped]

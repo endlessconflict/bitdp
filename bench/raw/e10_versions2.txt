@@ -1,0 +1,20 @@
+﻿# E10 versions (2) 2026-10-10T17:24:49-05:00
+[dna150 edit 17012ee v3 batch] rep 1: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.3115 gcups=7.224 ops_per_word=14
+[dna150 edit 17012ee znver4 1pair] rep 1: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.4391 gcups=5.124 ops_per_word=14
+[dna150 edit 628cdb6 v3 batch] rep 1: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.2845 gcups=7.907 ops_per_word=14
+[dna150 edit 628cdb6 znver4 1pair] rep 1: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.3701 gcups=6.080 ops_per_word=14
+[dna150 edit 0af2499 v3 batch] rep 1: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1465 gcups=15.359 ops_per_word=14
+[dna150 edit 0af2499 znver4 1pair] rep 1: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2201 gcups=10.224 ops_per_word=14
+[dna150 edit 17012ee v3 batch] rep 2: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.2768 gcups=8.130 ops_per_word=14
+[dna150 edit 17012ee znver4 1pair] rep 2: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.3955 gcups=5.688 ops_per_word=14
+[dna150 edit 628cdb6 v3 batch] rep 2: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.2821 gcups=7.977 ops_per_word=14
+[dna150 edit 628cdb6 znver4 1pair] rep 2: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.3717 gcups=6.053 ops_per_word=14
+[dna150 edit 0af2499 v3 batch] rep 2: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1460 gcups=15.413 ops_per_word=14
+[dna150 edit 0af2499 znver4 1pair] rep 2: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2443 gcups=9.211 ops_per_word=14
+[dna150 edit 17012ee v3 batch] rep 3: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.2972 gcups=7.571 ops_per_word=14
+[dna150 edit 17012ee znver4 1pair] rep 3: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.3781 gcups=5.951 ops_per_word=14
+[dna150 edit 628cdb6 v3 batch] rep 3: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.3085 gcups=7.292 ops_per_word=14
+[dna150 edit 628cdb6 znver4 1pair] rep 3: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.4076 gcups=5.520 ops_per_word=14
+[dna150 edit 0af2499 v3 batch] rep 3: bitdp-batch4 edit pairs=100000 cost_sum=1316060 seconds=0.1470 gcups=15.304 ops_per_word=14
+[dna150 edit 0af2499 znver4 1pair] rep 3: bitdp edit pairs=100000 cost_sum=1316060 seconds=0.2273 gcups=9.901 ops_per_word=14
+~/reads/reads.tsv

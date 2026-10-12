@@ -1,0 +1,16 @@
+# E17 check 2026-10-10T17:54:33-05:00
+dp_check: 16 x 1250 pairs, score sum -10514872
+real	0m31.007s
+user	0m30.997s
+sys	0m0.005s
+dp_check: 16 x 1250 pairs, score sum -15945808
+BGSA: 16 x 1250 pairs (subjects padded to 1256), score sum 10514872
+MATCH
+BGSA: 16 x 1250 pairs (subjects padded to 1256), score sum -15945808
+MATCH
+   4 ~/e17/gq.txt
+  10 ~/e17/gs.txt
+  14 total
+150
+a2189f555363549019c260b03415a473  ~/e17/gq.txt
+a2189f555363549019c260b03415a473  ~/e17/gq2.txt

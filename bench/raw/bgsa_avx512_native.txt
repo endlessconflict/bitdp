@@ -1,0 +1,96 @@
+# E9 rerun 2026-10-10T14:15:37-05:00 (BGSA dffcf9e)
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== edit-avx512 150 bp: -march=native result file vs old build: identical; entries, int16 sum: 800768 66035219
+== edit-avx512 1000 bp: -march=native result file vs old build: identical; entries, int16 sum: 20224 10738872
+== bitpal-packed-avx512-shipped 150 bp: -march=native result file vs old build: identical; entries, int16 sum: 800768 -110305359
+== bitpal-packed-avx512-shipped 1000 bp: -march=native result file vs old build: identical; entries, int16 sum: 20224 -16617808
+== edit-avx512-native, 150 bp (median3, -N 1)
+run 1: Cal GCUPS is 118.26
+run 2: Cal GCUPS is 118.23
+run 3: Cal GCUPS is 120.13
+median gcups=118.26
+== edit-avx512, 150 bp (median3, -N 1)
+run 1: Cal GCUPS is 115.94
+run 2: Cal GCUPS is 116.01
+run 3: Cal GCUPS is 116.85
+median gcups=116.01
+== edit-avx512-native, 1000 bp (median3, -N 1)
+run 1: Cal GCUPS is 121.81
+run 2: Cal GCUPS is 124.07
+run 3: Cal GCUPS is 122.75
+median gcups=122.75
+== edit-avx512, 1000 bp (median3, -N 1)
+run 1: Cal GCUPS is 124.00
+run 2: Cal GCUPS is 122.28
+run 3: Cal GCUPS is 122.67
+median gcups=122.67
+== bitpal-packed-avx512-shipped-native, 150 bp (median3, -N 1)
+run 1: Cal GCUPS is 15.54
+run 2: Cal GCUPS is 15.55
+run 3: Cal GCUPS is 12.51
+median gcups=15.54
+== bitpal-packed-avx512-shipped, 150 bp (median3, -N 1)
+run 1: Cal GCUPS is 15.24
+run 2: Cal GCUPS is 15.45
+run 3: Cal GCUPS is 15.47
+median gcups=15.45
+== bitpal-packed-avx512-shipped-native, 1000 bp (median3, -N 1)
+run 1: Cal GCUPS is 16.34
+run 2: Cal GCUPS is 15.87
+run 3: Cal GCUPS is 16.35
+median gcups=16.34
+== bitpal-packed-avx512-shipped, 1000 bp (median3, -N 1)
+run 1: Cal GCUPS is 15.51
+run 2: Cal GCUPS is 15.97
+run 3: Cal GCUPS is 15.81
+median gcups=15.81
+# E9 session 2026-10-10T14:17:33-05:00; bitdp-bench built from 0af2499 (zig build bench -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu -Dcpu=znver4)
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== edit 150 bp (64 x 12500)
+totals: bitdp pairs=800000 cost_sum=65920019; BGSA score sum over the 64x12500 real pairs: query-major 65920019, subject-major 65969865 -> MATCH
+-- BGSA edit-avx512-native
+run 1: Cal GCUPS is 118.77
+run 2: Cal GCUPS is 114.62
+run 3: Cal GCUPS is 116.19
+median gcups=116.19
+-- bitdp AVX-512
+run 1: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1792 gcups=100.420 ops_per_word=14
+run 2: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1779 gcups=101.194 ops_per_word=14
+run 3: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1818 gcups=99.031 ops_per_word=14
+median gcups=100.420
+== edit 1000 bp (16 x 1250)
+totals: bitdp pairs=20000 cost_sum=10514872; BGSA score sum over the 16x1250 real pairs: query-major 10514872, subject-major 10614984 -> MATCH
+-- BGSA edit-avx512-native
+run 1: Cal GCUPS is 126.62
+run 2: Cal GCUPS is 127.36
+run 3: Cal GCUPS is 115.82
+median gcups=126.62
+-- bitdp AVX-512
+run 1: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1308 gcups=152.878 ops_per_word=14
+run 2: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1301 gcups=153.701 ops_per_word=14
+run 3: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1294 gcups=154.566 ops_per_word=14
+median gcups=153.701
+== bitpal 150 bp (64 x 12500)
+totals: bitdp pairs=800000 cost_sum=109959759; BGSA score sum over the 64x12500 real pairs: query-major -109959759, subject-major -110189946 -> MATCH
+-- BGSA bitpal-packed-avx512-shipped-native
+run 1: Cal GCUPS is 15.44
+run 2: Cal GCUPS is 15.59
+run 3: Cal GCUPS is 15.43
+median gcups=15.44
+-- bitdp AVX-512
+run 1: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4764 gcups=12.192 ops_per_word=181
+run 2: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4833 gcups=12.135 ops_per_word=181
+run 3: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4828 gcups=12.139 ops_per_word=181
+median gcups=12.139
+== bitpal 1000 bp (16 x 1250)
+totals: bitdp pairs=20000 cost_sum=15945808; BGSA score sum over the 16x1250 real pairs: query-major -15945808, subject-major -16410850 -> MATCH
+-- BGSA bitpal-packed-avx512-shipped-native
+run 1: Cal GCUPS is 16.39
+run 2: Cal GCUPS is 16.29
+run 3: Cal GCUPS is 16.32
+median gcups=16.32
+-- bitdp AVX-512
+run 1: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2282 gcups=16.284 ops_per_word=181
+run 2: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2278 gcups=16.289 ops_per_word=181
+run 3: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2130 gcups=16.488 ops_per_word=181
+median gcups=16.289

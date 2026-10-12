@@ -54,6 +54,8 @@ pub fn main(init: std.process.Init) !void {
 
     var hits: std.ArrayList(Kn.Hit) = .empty;
     var total_hits: usize = 0;
+    // With "verify", every hit is kept as (guide, end, cost) and compared with the scalar DP's.
+    var found: std.ArrayList(Found) = .empty;
     var by_guide = try gpa.alloc(usize, nguides);
     @memset(by_guide, 0);
     const t0 = now(io);
@@ -64,7 +66,10 @@ pub fn main(init: std.process.Init) !void {
         const pk = Kn.Packed.init(slices[start..]);
         hits.clearRetainingCapacity();
         try pk.scan(gpa, g, max_cost, &hits);
-        for (hits.items) |h| by_guide[start + h.lane] += 1;
+        for (hits.items) |h| {
+            by_guide[start + h.lane] += 1;
+            if (verify) try found.append(gpa, .{ .guide = start + h.lane, .end = h.end, .cost = h.cost });
+        }
         start += pk.count;
     }
     while (start < nguides) : (start += Kn.lanes) {
@@ -75,7 +80,9 @@ pub fn main(init: std.process.Init) !void {
         hits.clearRetainingCapacity();
         try grp.scan(gpa, g, max_cost, &hits);
         for (hits.items) |h| {
-            if (h.lane < count) by_guide[start + h.lane] += 1;
+            if (h.lane >= count) continue;
+            by_guide[start + h.lane] += 1;
+            if (verify) try found.append(gpa, .{ .guide = start + h.lane, .end = h.end, .cost = h.cost });
         }
         total_hits += hits.items.len;
         grp.deinit(gpa);
@@ -91,13 +98,13 @@ pub fn main(init: std.process.Init) !void {
     if (!verify) return;
     // Scalar check: the last DP row at each column is the best cost ending there.
     const t1 = now(io);
-    var expected: usize = 0;
+    var expected: std.ArrayList(Found) = .empty;
     var mismatched: usize = 0;
     for (guides, 0..) |gd, gi| {
         var col: [guide_len + 1]i64 = undefined;
         for (&col, 0..) |*x, i| x.* = @as(i64, @intCast(i)) * scheme.gap;
         var n: usize = 0;
-        for (g) |c| {
+        for (g, 1..) |c, end| {
             var diag = col[0];
             col[0] = 0;
             for (gd, 1..) |pc, i| {
@@ -105,14 +112,33 @@ pub fn main(init: std.process.Init) !void {
                 diag = col[i];
                 col[i] = cell;
             }
-            if (col[guide_len] <= max_cost) n += 1;
+            if (col[guide_len] <= max_cost) {
+                n += 1;
+                try expected.append(gpa, .{ .guide = gi, .end = end, .cost = col[guide_len] });
+            }
         }
-        expected += n;
         if (n != by_guide[gi]) mismatched += 1;
     }
     const sec_scalar = @as(f64, @floatFromInt(now(io) - t1)) * 1e-9;
-    std.debug.print("scalar check: {d} hits expected, {d} guides disagree; scalar DP took {d:.3} s ({d:.2} GCUPS)\n", .{
-        expected, mismatched, sec_scalar, cells / sec_scalar * 1e-9,
+    std.mem.sort(Found, found.items, {}, Found.lessThan);
+    std.mem.sort(Found, expected.items, {}, Found.lessThan);
+    const same = found.items.len == expected.items.len and for (found.items, expected.items) |a, b| {
+        if (a.guide != b.guide or a.end != b.end or a.cost != b.cost) break false;
+    } else true;
+    std.debug.print("scalar check: {d} hits expected, {d} guides disagree, hit sets (guide, end, cost) identical: {}; scalar DP took {d:.3} s ({d:.2} GCUPS)\n", .{
+        expected.items.len, mismatched, same, sec_scalar, cells / sec_scalar * 1e-9,
     });
-    if (mismatched != 0 or expected != reported) return error.Mismatch;
+    if (!same or mismatched != 0) return error.Mismatch;
 }
+
+const Found = struct {
+    guide: usize,
+    end: usize,
+    cost: i64,
+
+    fn lessThan(_: void, a: Found, b: Found) bool {
+        if (a.guide != b.guide) return a.guide < b.guide;
+        if (a.end != b.end) return a.end < b.end;
+        return a.cost < b.cost;
+    }
+};

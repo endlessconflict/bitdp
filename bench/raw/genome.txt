@@ -1,0 +1,5 @@
+# ~/braid/ref.fa in WSL (the genome bitdp-scan reads); measured 2026-10-09
+>NC_000913.3 Escherichia coli str. K-12 substr. MG1655, complete genome
+records 1
+sequence_length 4641652
+note: ref.fa was restored from NCBI efetch on 2026-10-09 after an accidental overwrite; .fai and bwa .pac match the original index files

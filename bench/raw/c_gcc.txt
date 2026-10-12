@@ -1,0 +1,5 @@
+exported bitdp_ symbols in libbitdp.so: 28
+PASSED: 0 failure(s)
+PASSED: 0 failure(s)
+PASSED: 0 failure(s)
+gcc (Ubuntu 15.2.0-16ubuntu1) 15.2.0

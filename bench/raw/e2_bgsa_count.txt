@@ -1,0 +1,3 @@
+# E2 2026-10-10T19:00:36-05:00: python review/factcheck/bgsa_count.py on ~/bgsa-builds/bitpal-{nonpacked,packed}-avx2/align_core.c (BGSA dffcf9e generator output, the builds of Table 4)
+BGSA generated BitPAl standard AVX2 (2, -3, -5): md5 8e40ef7389baa0d8f3c3ef68eebb3b3d; per word and column: total 310, inter-word transfer 39, single-word 271; unknown intrinsics []
+BGSA generated BitPAl packed AVX2 (2, -3, -5): md5 02a294a9ee47c5c4621ed46bb992ce60; per word and column: total 194, inter-word transfer 33, single-word 161; unknown intrinsics []

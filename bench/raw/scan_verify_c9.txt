@@ -1,0 +1,4 @@
+genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.246 s, 12.07 GCUPS
+scalar check: 78 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 12.675 s (0.23 GCUPS)
+genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.290 s, 30.77 GCUPS
+scalar check: 306 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 38.875 s (0.23 GCUPS)

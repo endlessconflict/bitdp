@@ -1,0 +1,39 @@
+# Windows power mode set to 'Best power efficiency' for this session, the mode of the 2026-10-10 sessions (power_mode_events.txt), and set back to 'Best performance' afterwards (powercfg /overlaysetactive)
+# power start 2026-10-12T13:50:36: BatteryStatus=2 (2 = on AC), charge=83 %, scheme (Balanced), Windows power mode on AC: Best power efficiency
+# T4 AVX-512 interleaved session 2026-10-12T13:50:36-05:00; bitdp-bench built from 0af2499 (-Dcpu=znver4), md5 da2efd7afde7; BGSA dffcf9e, -march=native builds of 2026-10-10 (md5 edit a8b9e2f88060, bitpal e503b9fe2b41)
+# order within a cell: BGSA run 1, bitdp run 1, BGSA run 2, bitdp run 2, BGSA run 3, bitdp run 3
+model name	: AMD Ryzen 7 8840U w/ Radeon 780M Graphics
+== T4 edit 150 bp; bitdp AVX-512 total: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1829 gcups=98.397 ops_per_word=14
+totals edit-avx512-native: BGSA: 64 x 12500 pairs (subjects padded to 12512), score sum 65920019 MATCH 
+[T4 edit 150 BGSA edit-avx512-native] rep 1: Cal GCUPS is 116.66
+[T4 edit 150 bitdp AVX-512] rep 1: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1755 gcups=102.537 ops_per_word=14
+[T4 edit 150 BGSA edit-avx512-native] rep 2: Cal GCUPS is 120.29
+[T4 edit 150 bitdp AVX-512] rep 2: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1765 gcups=101.956 ops_per_word=14
+[T4 edit 150 BGSA edit-avx512-native] rep 3: Cal GCUPS is 116.77
+[T4 edit 150 bitdp AVX-512] rep 3: bitdp-group8 edit pairs=800000 cost_sum=65920019 seconds=0.1734 gcups=103.798 ops_per_word=14
+== T4 edit 1000 bp; bitdp AVX-512 total: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1285 gcups=155.682 ops_per_word=14
+totals edit-avx512-native: BGSA: 16 x 1250 pairs (subjects padded to 1264), score sum 10514872 MATCH 
+[T4 edit 1000 BGSA edit-avx512-native] rep 1: Cal GCUPS is 122.67
+[T4 edit 1000 bitdp AVX-512] rep 1: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1281 gcups=156.165 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx512-native] rep 2: Cal GCUPS is 125.91
+[T4 edit 1000 bitdp AVX-512] rep 2: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1272 gcups=157.188 ops_per_word=14
+[T4 edit 1000 BGSA edit-avx512-native] rep 3: Cal GCUPS is 128.96
+[T4 edit 1000 bitdp AVX-512] rep 3: bitdp-group8 edit pairs=20000 cost_sum=10514872 seconds=0.1307 gcups=153.042 ops_per_word=14
+== T4 bitpal 150 bp; bitdp AVX-512 total: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4593 gcups=12.335 ops_per_word=181
+totals bitpal-packed-avx512-shipped-native: BGSA: 64 x 12500 pairs (subjects padded to 12512), score sum -109959759 MATCH 
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 1: Cal GCUPS is 15.21
+[T4 bitpal 150 bitdp AVX-512] rep 1: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.5158 gcups=11.875 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 2: Cal GCUPS is 15.21
+[T4 bitpal 150 bitdp AVX-512] rep 2: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4947 gcups=12.043 ops_per_word=181
+[T4 bitpal 150 BGSA bitpal-packed-avx512-shipped-native] rep 3: Cal GCUPS is 15.27
+[T4 bitpal 150 bitdp AVX-512] rep 3: bitdp-group8 bitpal pairs=800000 cost_sum=109959759 seconds=1.4927 gcups=12.059 ops_per_word=181
+== T4 bitpal 1000 bp; bitdp AVX-512 total: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2158 gcups=16.450 ops_per_word=181
+totals bitpal-packed-avx512-shipped-native: BGSA: 16 x 1250 pairs (subjects padded to 1264), score sum -15945808 MATCH 
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 1: Cal GCUPS is 16.41
+[T4 bitpal 1000 bitdp AVX-512] rep 1: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2145 gcups=16.468 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 2: Cal GCUPS is 16.53
+[T4 bitpal 1000 bitdp AVX-512] rep 2: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2259 gcups=16.315 ops_per_word=181
+[T4 bitpal 1000 BGSA bitpal-packed-avx512-shipped-native] rep 3: Cal GCUPS is 16.08
+[T4 bitpal 1000 bitdp AVX-512] rep 3: bitdp-group8 bitpal pairs=20000 cost_sum=15945808 seconds=1.2266 gcups=16.306 ops_per_word=181
+# T4 AVX-512 interleaved end 2026-10-12T13:51:00-05:00
+# power end 2026-10-12T13:51:01: BatteryStatus=2 (2 = on AC), charge=83 %, scheme (Balanced), Windows power mode on AC: Best power efficiency

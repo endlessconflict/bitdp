@@ -481,6 +481,13 @@ pub fn Kernel(comptime scheme: Scheme) type {
 
 // ---------------------------------------------------------------- tests
 
+// Test sizes per mode; the paper's Section 4.2 quotes them (checked by review/factcheck).
+const multiword_pairs = 3_000; // per scheme, patterns up to 300 rows
+const batched_rounds = 100; // rounds of 3 * lanes + 1 pairs per scheme
+const table1_rounds = 12; // rounds of 4 * lanes + 3 pairs per Table 1 scheme
+const search_pairs = 3_000; // per scheme, patterns up to 200 rows
+const near_identical_pairs = 1_000; // per scheme, 63 to 300 rows against a copy with at most 3 edits
+
 fn checkRandom(comptime s: Scheme, pairs: usize, seed: u64) !void {
     const K = Kernel(s);
     var prng = std.Random.DefaultPrng.init(seed);
@@ -573,11 +580,49 @@ test "multi-word patterns (up to 300) match the scalar oracle" {
     var p: [300]u8 = undefined;
     var t: [300]u8 = undefined;
     inline for ([_]Scheme{ .{}, .{ .match = -2, .mismatch = 3, .gap = 5 }, .{ .sub = &schemes.tsTvCost, .gap = 2 } }) |s| {
-        for (0..300) |_| {
+        for (0..multiword_pairs) |_| {
             const m = rnd.intRangeAtMost(usize, 1, 300);
             const n = rnd.intRangeAtMost(usize, 0, 300);
             for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
             for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+            var a = try Kernel(s).Aligner.init(gpa, p[0..m]);
+            defer a.deinit(gpa);
+            try std.testing.expectEqual(reference.scalar(s, p[0..m], t[0..n], &buf), a.distance(t[0..n]));
+        }
+    }
+}
+
+test "near-identical multi-word pairs (long carries across words) match the scalar oracle" {
+    const gpa = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(11);
+    const rnd = prng.random();
+    var buf: [301]i64 = undefined;
+    var p: [300]u8 = undefined;
+    var t: [303]u8 = undefined;
+    inline for ([_]Scheme{ .{}, .{ .match = -2, .mismatch = 3, .gap = 5 }, .{ .sub = &schemes.tsTvCost, .gap = 2 } }) |s| {
+        for (0..near_identical_pairs) |_| {
+            const m = rnd.intRangeAtMost(usize, 63, 300);
+            for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+            @memcpy(t[0..m], p[0..m]);
+            var n = m;
+            for (0..rnd.uintAtMost(usize, 3)) |_| {
+                const i = rnd.uintLessThan(usize, n + 1);
+                const c = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+                switch (rnd.uintLessThan(u8, 3)) {
+                    0 => if (i < n) {
+                        t[i] = c;
+                    },
+                    1 => {
+                        std.mem.copyBackwards(u8, t[i + 1 .. n + 1], t[i..n]);
+                        t[i] = c;
+                        n += 1;
+                    },
+                    else => if (i < n) {
+                        std.mem.copyForwards(u8, t[i .. n - 1], t[i + 1 .. n]);
+                        n -= 1;
+                    },
+                }
+            }
             var a = try Kernel(s).Aligner.init(gpa, p[0..m]);
             defer a.deinit(gpa);
             try std.testing.expectEqual(reference.scalar(s, p[0..m], t[0..n], &buf), a.distance(t[0..n]));
@@ -596,17 +641,58 @@ test "batched SIMD lanes match the scalar oracle (mixed lengths)" {
         var store: [count][2][200]u8 = undefined;
         var ps: [count][]const u8 = undefined;
         var ts: [count][]const u8 = undefined;
-        for (0..count) |i| {
-            const m = rnd.intRangeAtMost(usize, 1, 200);
-            const n = rnd.intRangeAtMost(usize, 0, 200);
-            for (store[i][0][0..m]) |*x| x.* = "ACGT"[rnd.int(u2)];
-            for (store[i][1][0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
-            ps[i] = store[i][0][0..m];
-            ts[i] = store[i][1][0..n];
+        for (0..batched_rounds) |_| {
+            for (0..count) |i| {
+                const m = rnd.intRangeAtMost(usize, 1, 200);
+                const n = rnd.intRangeAtMost(usize, 0, 200);
+                for (store[i][0][0..m]) |*x| x.* = "ACGT"[rnd.int(u2)];
+                for (store[i][1][0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
+                ps[i] = store[i][0][0..m];
+                ts[i] = store[i][1][0..n];
+            }
+            var out: [count]i64 = undefined;
+            try K.distances(gpa, &ps, &ts, &out);
+            for (0..count) |i| try std.testing.expectEqual(reference.scalar(s, ps[i], ts[i], &buf), out[i]);
         }
-        var out: [count]i64 = undefined;
-        try K.distances(gpa, &ps, &ts, &out);
-        for (0..count) |i| try std.testing.expectEqual(reference.scalar(s, ps[i], ts[i], &buf), out[i]);
+    }
+}
+
+test "every scheme of the paper's Table 1: prepared and batched kernels match the scalar oracle pair by pair (up to 300 rows)" {
+    const gpa = std.testing.allocator;
+    var prng = std.Random.DefaultPrng.init(8);
+    const rnd = prng.random();
+    var buf: [301]i64 = undefined;
+    const table1 = comptime [_]Scheme{
+        .{},                          .{ .mismatch = 2 }, .{ .mismatch = 1, .gap = 2 },
+        .{ .mismatch = 3, .gap = 2 }, schemes.bitpal[1],  schemes.bitpal[2],
+        schemes.bitpal[3],            schemes.bitpal[4],  schemes.ts_tv,
+        schemes.blosum62Linear(4),
+    };
+    inline for (table1) |s| {
+        const K = Kernel(s);
+        const count = 4 * K.lanes + 3;
+        var store: [count][2][400]u8 = undefined;
+        var ps: [count][]const u8 = undefined;
+        var ts: [count][]const u8 = undefined;
+        for (0..table1_rounds) |_| {
+            for (0..count) |i| {
+                const m = rnd.intRangeAtMost(usize, 1, 300);
+                const n = rnd.intRangeAtMost(usize, 0, 400);
+                for (store[i][0][0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+                for (store[i][1][0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+                ps[i] = store[i][0][0..m];
+                ts[i] = store[i][1][0..n];
+            }
+            var out: [count]i64 = undefined;
+            try K.distances(gpa, &ps, &ts, &out);
+            for (0..count) |i| {
+                const want = reference.scalar(s, ps[i], ts[i], &buf);
+                try std.testing.expectEqual(want, out[i]);
+                var a = try K.Aligner.init(gpa, ps[i]);
+                defer a.deinit(gpa);
+                try std.testing.expectEqual(want, a.distance(ts[i]));
+            }
+        }
     }
 }
 
@@ -646,20 +732,25 @@ test "search mode (pattern against the best substring) matches the scalar oracle
         .{ .mode = .search },
         .{ .match = -2, .mismatch = 3, .gap = 5, .mode = .search },
         .{ .sub = &schemes.tsTvCost, .gap = 2, .mode = .search },
+        comptime blk: {
+            var b = schemes.blosum62Linear(4);
+            b.mode = .search;
+            break :blk b;
+        },
     }) |s| {
         const K = Kernel(s);
         var p: [200]u8 = undefined;
         var t: [300]u8 = undefined;
-        for (0..400) |_| {
+        for (0..search_pairs) |_| {
             const m = rnd.intRangeAtMost(usize, 1, 200);
             const n = rnd.intRangeAtMost(usize, 0, 300);
-            for (p[0..m]) |*x| x.* = "ACGT"[rnd.int(u2)];
-            for (t[0..n]) |*x| x.* = "ACGT"[rnd.int(u2)];
+            for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
+            for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
             // Plant the pattern (mutated) inside the text half of the time.
             if (n > m and rnd.boolean()) {
                 const at = rnd.uintLessThan(usize, n - m);
                 @memcpy(t[at..][0..m], p[0..m]);
-                t[at + m / 2] = 'A';
+                t[at + m / 2] = s.alphabet[0];
             }
             const want = reference.scalar(s, p[0..m], t[0..n], &buf);
             var a = try K.Aligner.init(gpa, p[0..m]);

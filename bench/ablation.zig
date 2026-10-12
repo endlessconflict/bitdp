@@ -38,6 +38,32 @@ const sweep = blk: {
     break :blk s;
 };
 
+/// Nodes per op kind among those the outputs use (the nodes Table 1 counts),
+/// so the per-word cost of the multi-word path can be recomputed from it.
+fn opMix(plan: bitdp.Plan) [@typeInfo(bitdp.Op).@"enum".fields.len]u32 {
+    @setEvalBranchQuota(1 << 20);
+    var live = [_]bool{false} ** plan.nodes.len;
+    for (plan.out_v[0 .. plan.k - 1]) |o| live[o] = true;
+    for (plan.out_u[0 .. plan.k - 1]) |o| live[o] = true;
+    var mix = [_]u32{0} ** @typeInfo(bitdp.Op).@"enum".fields.len;
+    var i: usize = plan.len;
+    while (i > 0) {
+        i -= 1;
+        if (!live[i]) continue;
+        const n = plan.nodes[i];
+        mix[@intFromEnum(n.op)] += 1;
+        switch (n.op) {
+            .input, .zero, .ones => {},
+            .not, .shl0, .shl1 => live[n.a] = true,
+            else => {
+                live[n.a] = true;
+                live[n.b] = true;
+            },
+        }
+    }
+    return mix;
+}
+
 pub fn main() void {
     if (options.scheme >= 100) {
         const entry = sweep[if (options.scheme >= 100) options.scheme - 100 else 0];
@@ -46,7 +72,12 @@ pub fn main() void {
         return;
     }
     const entry = list[if (options.scheme >= 100) 0 else options.scheme];
-    std.debug.print("{s}:", .{entry[0]});
+    const mix = comptime opMix(bitdp.derive(entry[1]));
+    std.debug.print("{s} live ops:", .{entry[0]});
+    inline for (@typeInfo(bitdp.Op).@"enum".fields, 0..) |f, i| {
+        if (mix[i] > 0) std.debug.print(" {s}={d}", .{ f.name, mix[i] });
+    }
+    std.debug.print("\n{s}:", .{entry[0]});
     inline for (configs) |c| {
         const opt = c[1];
         const usable = opt.direct or opt.merge or opt.truth_table;
