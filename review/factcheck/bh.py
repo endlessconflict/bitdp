@@ -459,8 +459,8 @@ def main():
         r.check("BH3", want in txt and B[6] < B[4], "§4.3 bit-plane realization counts", want)
         abst = re.sub(r"\s+", " ", re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", tex, re.S).group(1))
         want = f"needs {b[4]} operations on BitPAl's (2, $-3$, $-5$) weights"
-        want2 = f"a lower bound of {b[5]} for Bergeron and Hamel's algorithm"
-        r.check("BH3", want in abst and want2 in abst, "abstract: our and their (lower-bound) counts on BitPAl (2,-3,-5)", f"{b[4]} / {b[5]}")
+        want2 = f"{b[5]} for Bergeron and Hamel's listing counted in vector operations"
+        r.check("BH3", want in abst and want2 in abst, "abstract: our and their listing's counts on BitPAl (2,-3,-5)", f"{b[4]} / {b[5]}")
         one_chain = [row for row in rows if row[0].startswith("(0,1,")]
         r.check("BH3", all(row[4] < row[5] for row in one_chain),
                 "'grows more slowly when substitution costs span a wide range': on the one-chain family (0,1,c) ours stays lower",
