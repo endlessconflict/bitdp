@@ -5,8 +5,8 @@
 // usage: baselines {edlib|striped16|scan16|diag16|striped_sat|scan_sat} {edit|bitpal|tstv|blosum} FILE [K]
 // K (edlib only): distance bound passed to edlib; pairs above it count as failures.
 //
-// Prints the sum of alignment costs (negated parasail scores), so the result
-// can be checked against bitdp's, and the time spent aligning.
+// Prints the sum of alignment costs (negated parasail scores) and their per-pair hash (pairhash.h), so
+// the result can be checked against bitdp's pair by pair, and the time spent aligning.
 
 #include <edlib.h>
 #include <parasail.h>
@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "pairhash.h"
 
 typedef parasail_result_t *(*nw_fn)(const char *, int, const char *, int, int, int, const parasail_matrix_t *);
 
@@ -80,28 +81,34 @@ int main(int argc, char **argv) {
 
     long long total = 0, cells = 0, pairs = 0, over_k = 0;
     double busy = 0;
+    pairhash ph;
+    pairhash_init(&ph);
     for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
         char *tab = strchr(line, '\t');
         if (!tab) continue;
         *tab = 0;
         const char *p = line, *t = tab + 1;
         int m = strlen(p), n = strlen(t);
+        long long c;
         double t0 = now();
         if (fn) {
             parasail_result_t *r = fn(p, m, t, n, gap, gap, matrix);
-            total -= parasail_result_get_score(r);
+            c = -parasail_result_get_score(r);
             parasail_result_free(r);
         } else {
             EdlibAlignResult r = edlibAlign(p, m, t, n, edlibNewAlignConfig(k, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
-            if (r.editDistance < 0) over_k++;
-            else total += r.editDistance;
+            c = r.editDistance; // -1 above K
             edlibFreeAlignResult(r);
         }
         busy += now() - t0;
+        if (c < 0 && !fn) over_k++;
+        else total += c;
+        pairhash_add(&ph, c);
         cells += (long long)m * n;
         pairs++;
     }
-    printf("%s %s pairs=%lld cost_sum=%lld seconds=%.4f gcups=%.3f", tool, scheme, pairs, total, busy, cells / busy * 1e-9);
+    printf("%s %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f", tool, scheme, pairs, total,
+           pairhash_end(&ph), busy, cells / busy * 1e-9);
     if (k >= 0) printf(" k=%d over_k=%lld", k, over_k);
     printf("\n");
     parasail_matrix_free(matrix);

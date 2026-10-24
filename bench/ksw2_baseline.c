@@ -12,6 +12,7 @@
 #include <string.h>
 #include <time.h>
 #include "ksw2.h"
+#include "pairhash.h"
 
 static double now(void) {
     struct timespec t;
@@ -63,6 +64,8 @@ int main(int argc, char **argv) {
     int flag = KSW_EZ_SCORE_ONLY | (!strcmp(argv[1], "tstv") ? KSW_EZ_GENERIC_SC : 0);
     ksw_extz_t ez;
     memset(&ez, 0, sizeof ez);
+    pairhash ph;
+    pairhash_init(&ph);
     for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
         char *tab = strchr(line, '\t');
         if (!tab) continue;
@@ -74,9 +77,11 @@ int main(int argc, char **argv) {
         ksw_extz2_sse(0, m, q, n, t, 5, mat, 0, (int8_t)gap, -1, -1, 0, flag, &ez);
         busy += now() - t0;
         total -= ez.score;
+        pairhash_add(&ph, -(long long)ez.score);
         cells += (long long)m * n;
         pairs++;
     }
-    printf("ksw2_extz2_sse %s pairs=%lld cost_sum=%lld seconds=%.4f gcups=%.3f\n", argv[1], pairs, total, busy, cells / busy * 1e-9);
+    printf("ksw2_extz2_sse %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", argv[1], pairs, total,
+           pairhash_end(&ph), busy, cells / busy * 1e-9);
     return 0;
 }

@@ -1,5 +1,6 @@
 //! bitdp side of the benchmark: global alignment cost of every pair in a
-//! "pattern<TAB>text" file. Output matches bench/baselines.c.
+//! "pattern<TAB>text" file. Output matches bench/baselines.c, including the
+//! per-pair cost hash of bench/pairhash.h and the BENCH_DUMP file.
 //!
 //! usage: bitdp-bench {edit|bitpal|tstv|blosum} FILE [batch]
 //!
@@ -13,7 +14,25 @@
 const std = @import("std");
 const bitdp = @import("bitdp");
 
-fn runBatch(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem.Allocator, data: []const u8) !void {
+/// Prints the run's line: cost sum and FNV-1a (64 bit) over each cost in decimal plus a newline, which
+/// is also the content of the file BENCH_DUMP names, if set. Runs after the timed region.
+fn report(io: std.Io, gpa: std.mem.Allocator, env: *std.process.Environ.Map, label: []const u8, lanes: usize, name: []const u8, costs: []const i64, cells: u64, sec: f64, ops: usize) !void {
+    var text: std.ArrayList(u8) = .empty;
+    var h: u64 = 0xcbf29ce484222325;
+    var total: i64 = 0;
+    for (costs) |c| {
+        const start = text.items.len;
+        try text.print(gpa, "{d}\n", .{c});
+        for (text.items[start..]) |b| h = (h ^ b) *% 0x100000001b3;
+        total += c;
+    }
+    if (env.get("BENCH_DUMP")) |path| try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = text.items });
+    std.debug.print("{s}{d} {s} pairs={d} cost_sum={d} hash={x:0>16} seconds={d:.4} gcups={d:.3} ops_per_word={d}\n", .{
+        label, lanes, name, costs.len, total, h, sec, @as(f64, @floatFromInt(cells)) / sec * 1e-9, ops,
+    });
+}
+
+fn runBatch(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem.Allocator, env: *std.process.Environ.Map, data: []const u8) !void {
     const K = bitdp.Kernel(s);
     var ps: std.ArrayList([]const u8) = .empty;
     var ts: std.ArrayList([]const u8) = .empty;
@@ -29,14 +48,10 @@ fn runBatch(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem
     const t0 = std.Io.Timestamp.now(io, .awake).nanoseconds;
     try K.distances(gpa, ps.items, ts.items, out);
     const sec = @as(f64, @floatFromInt(std.Io.Timestamp.now(io, .awake).nanoseconds - t0)) * 1e-9;
-    var total: i64 = 0;
-    for (out) |x| total += x;
-    std.debug.print("bitdp-batch{d} {s} pairs={d} cost_sum={d} seconds={d:.4} gcups={d:.3} ops_per_word={d}\n", .{
-        K.lanes, name, out.len, total, sec, @as(f64, @floatFromInt(cells)) / sec * 1e-9, K.ops,
-    });
+    try report(io, gpa, env, "bitdp-batch", K.lanes, name, out, cells, sec, K.ops);
 }
 
-fn runAllVsAll(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem.Allocator, qdata: []const u8, sdata: []const u8) !void {
+fn runAllVsAll(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem.Allocator, env: *std.process.Environ.Map, qdata: []const u8, sdata: []const u8) !void {
     const K = bitdp.Kernel(s);
     var queries: std.ArrayList([]const u8) = .empty;
     var subjects: std.ArrayList([]const u8) = .empty;
@@ -44,36 +59,34 @@ fn runAllVsAll(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.
     while (it.next()) |l| try queries.append(gpa, l);
     it = std.mem.tokenizeScalar(u8, sdata, '\n');
     while (it.next()) |l| try subjects.append(gpa, l);
+    const ns = subjects.items.len;
+    const costs = try gpa.alloc(i64, queries.items.len * ns); // query-major
 
     const t0 = std.Io.Timestamp.now(io, .awake).nanoseconds;
-    const ngroups = (subjects.items.len + K.lanes - 1) / K.lanes;
+    const ngroups = (ns + K.lanes - 1) / K.lanes;
     const groups = try gpa.alloc(K.Group, ngroups);
     for (groups, 0..) |*g, i| {
         const lo = i * K.lanes;
-        g.* = try K.Group.init(gpa, subjects.items[lo..@min(lo + K.lanes, subjects.items.len)]);
+        g.* = try K.Group.init(gpa, subjects.items[lo..@min(lo + K.lanes, ns)]);
     }
-    var total: i64 = 0;
-    var cells: u64 = 0;
-    for (queries.items) |q| for (groups, 0..) |*g, i| {
+    for (queries.items, 0..) |q, qi| for (groups, 0..) |*g, i| {
         const r = g.distances(q);
-        const count = @min(K.lanes, subjects.items.len - i * K.lanes);
-        for (r[0..count], 0..) |x, l| {
-            total += x;
-            cells += q.len * subjects.items[i * K.lanes + l].len;
-        }
+        const count = @min(K.lanes, ns - i * K.lanes);
+        @memcpy(costs[qi * ns + i * K.lanes ..][0..count], r[0..count]);
     };
     const sec = @as(f64, @floatFromInt(std.Io.Timestamp.now(io, .awake).nanoseconds - t0)) * 1e-9;
-    std.debug.print("bitdp-group{d} {s} pairs={d} cost_sum={d} seconds={d:.4} gcups={d:.3} ops_per_word={d}\n", .{
-        K.lanes, name, queries.items.len * subjects.items.len, total, sec, @as(f64, @floatFromInt(cells)) / sec * 1e-9, K.ops,
-    });
+    var slen: u64 = 0;
+    for (subjects.items) |x| slen += x.len;
+    var cells: u64 = 0;
+    for (queries.items) |q| cells += q.len * slen;
+    try report(io, gpa, env, "bitdp-group", K.lanes, name, costs, cells, sec, K.ops);
 }
 
-fn run(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, data: []const u8) !void {
+fn run(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, gpa: std.mem.Allocator, env: *std.process.Environ.Map, data: []const u8) !void {
     const K = bitdp.Kernel(s);
     var arena_buf: [1 << 20]u8 = undefined;
-    var total: i64 = 0;
+    var costs: std.ArrayList(i64) = .empty;
     var cells: u64 = 0;
-    var pairs: u64 = 0;
     var busy: i96 = 0;
     var lines = std.mem.tokenizeScalar(u8, data, '\n');
     while (lines.next()) |line| {
@@ -83,15 +96,12 @@ fn run(comptime s: bitdp.Scheme, name: []const u8, io: std.Io, data: []const u8)
         var fba = std.heap.FixedBufferAllocator.init(&arena_buf);
         const t0 = std.Io.Timestamp.now(io, .awake).nanoseconds;
         var a = try K.Aligner.init(fba.allocator(), p);
-        total += a.distance(t);
+        const c = a.distance(t);
         busy += std.Io.Timestamp.now(io, .awake).nanoseconds - t0;
+        try costs.append(gpa, c);
         cells += p.len * t.len;
-        pairs += 1;
     }
-    const sec = @as(f64, @floatFromInt(busy)) * 1e-9;
-    std.debug.print("bitdp {s} pairs={d} cost_sum={d} seconds={d:.4} gcups={d:.3} ops_per_word={d}\n", .{
-        name, pairs, total, sec, @as(f64, @floatFromInt(cells)) / sec * 1e-9, K.ops,
-    });
+    try report(io, gpa, env, "bitdp", 1, name, costs.items, cells, @as(f64, @floatFromInt(busy)) * 1e-9, K.ops);
 }
 
 const table = .{
@@ -104,6 +114,7 @@ const table = .{
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const arena = init.arena.allocator();
+    const env = init.environ_map;
     const args = try init.minimal.args.toSlice(arena);
     if (args.len < 3) {
         std.debug.print("usage: bitdp-bench SCHEME FILE\n", .{});
@@ -115,15 +126,15 @@ pub fn main(init: std.process.Init) !void {
         const q = try std.Io.Dir.cwd().readFileAlloc(io, args[3], arena, .unlimited);
         const sb = try std.Io.Dir.cwd().readFileAlloc(io, args[4], arena, .unlimited);
         inline for (table) |e| {
-            if (std.mem.eql(u8, scheme, e[0])) return runAllVsAll(e[1], e[0], io, arena, q, sb);
+            if (std.mem.eql(u8, scheme, e[0])) return runAllVsAll(e[1], e[0], io, arena, env, q, sb);
         }
         return error.UnknownScheme;
     }
     const data = try std.Io.Dir.cwd().readFileAlloc(io, args[2], arena, .unlimited);
     inline for (table) |e| {
         if (std.mem.eql(u8, scheme, e[0])) {
-            if (args.len > 3) return runBatch(e[1], e[0], io, arena, data);
-            return run(e[1], e[0], io, data);
+            if (args.len > 3) return runBatch(e[1], e[0], io, arena, env, data);
+            return run(e[1], e[0], io, arena, env, data);
         }
     }
     return error.UnknownScheme;

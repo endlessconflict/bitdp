@@ -1,0 +1,64 @@
+// A*PA2 baseline: exact global edit distance of every pair in a "pattern<TAB>text" file through the C API
+// of A*PA2 (astar-pairwise-aligner, crate astarpa-c), in its "simple" variant (band doubling with
+// bit-packed blocks) or its "full" variant (with the A* heuristics). Unit costs only. A*PA2 has no
+// score-only mode: every call also builds a CIGAR, which is freed inside the timed region.
+//
+// build: gcc -O3 -march=native astarpa2_baseline.c -I$DEPS/astar-pairwise-aligner/astarpa-c -o astarpa2_baseline \
+//            $DEPS/astar-pairwise-aligner/target/release/libastarpa_c.a -lpthread -ldl -lm
+// usage: astarpa2_baseline {simple|full} FILE
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include "astarpa.h"
+#include "pairhash.h"
+
+static double now(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
+}
+
+int main(int argc, char **argv) {
+    if (argc != 3 || (strcmp(argv[1], "simple") && strcmp(argv[1], "full"))) {
+        fprintf(stderr, "usage: %s {simple|full} FILE\n", argv[0]);
+        return 2;
+    }
+    int full = !strcmp(argv[1], "full");
+
+    FILE *f = fopen(argv[2], "rb");
+    if (!f) return 1;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *buf = malloc(size + 1);
+    if (fread(buf, 1, size, f) != (size_t)size) return 1;
+    buf[size] = 0;
+    fclose(f);
+
+    long long total = 0, cells = 0, pairs = 0;
+    double busy = 0;
+    pairhash ph;
+    pairhash_init(&ph);
+    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
+        char *tab = strchr(line, '\t');
+        if (!tab) continue;
+        *tab = 0;
+        size_t m = strlen(line), n = strlen(tab + 1);
+        uint8_t *cigar;
+        uintptr_t cigar_len;
+        double t0 = now();
+        uint64_t c = full ? astarpa2_full((const uint8_t *)line, m, (const uint8_t *)tab + 1, n, &cigar, &cigar_len)
+                          : astarpa2_simple((const uint8_t *)line, m, (const uint8_t *)tab + 1, n, &cigar, &cigar_len);
+        astarpa_free_cigar(cigar);
+        busy += now() - t0;
+        total += (long long)c;
+        pairhash_add(&ph, (long long)c);
+        cells += (long long)m * n;
+        pairs++;
+    }
+    printf("astarpa2-%s edit pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", argv[1], pairs, total,
+           pairhash_end(&ph), busy, cells / busy * 1e-9);
+    return 0;
+}
