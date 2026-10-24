@@ -12,7 +12,7 @@
 # derivation with Zig in WSL and, through WSL interop, with the Windows Zig (ZIG_WIN, else zig.exe on PATH).
 #
 # usage: bench/reproduce.sh [--dry-run] [--quick] [STEP ...]
-#   steps (default: all, in this order): deps build env inputs ref t4 t5 t6 long scan compile robust summary
+#   steps (default: all, in this order): deps build ops env inputs ref t4 t5 t6 long scan compile robust insn summary
 #   --dry-run  print every command instead of running it
 #   --quick    tiny inputs, 2 repetitions, output under $WORK-quick: a test of the harness, not a measurement
 # environment: DEPS ($HOME/bitdp-deps), WORK ($HOME/bitdp-r2), REPS (10), CORE (2), RREPS (5, step robust),
@@ -29,7 +29,7 @@ DRY=0 QUICK=0 STEPS=()
 for a in "$@"; do
     case $a in --dry-run) DRY=1 ;; --quick) QUICK=1 ;; *) STEPS+=("$a") ;; esac
 done
-[ ${#STEPS[@]} -gt 0 ] || STEPS=(deps build env inputs ref t4 t5 t6 long scan compile robust summary)
+[ ${#STEPS[@]} -gt 0 ] || STEPS=(deps build ops env inputs ref t4 t5 t6 long scan compile robust insn summary)
 RAW="$R/bench/raw/r2" GEN="$R/paper/generated"
 if [ $QUICK = 1 ]; then WORK=$WORK-quick REPS=2 RREPS=2 CREPS=1 RAW=$WORK/raw GEN=$WORK/generated; fi
 B=$WORK/bin IN=$WORK/in S=$WORK/src LOG=runs.txt
@@ -84,6 +84,18 @@ build() {
     x ": > '$RAW/evex.txt'"
     for f in bitdp-bench-x86_64_v3 bitdp-scan-x86_64_v3 seqan_avx2 bgsa-myers-avx2 bgsa-bitpal-packed-avx2 bgsa-bitpal-nonpacked-avx2; do
         x "evex $B/$f"
+    done
+}
+
+# ---- ops: operation counts (deterministic, not timed): Table 1 and Fig. 2 from `zig build mve`, Tables 2-3 and
+# Fig. 3 from `zig build ablation` (schemes 0-9: ablation, 100-123: scaling sweep)
+ops() {
+    local schemes="$(seq 0 9) $(seq 100 123)"
+    [ $QUICK = 0 ] || schemes="0 100"
+    x "(cd '$R' && $ZIG build mve -Doptimize=ReleaseFast --cache-dir $HOME/.cache/bitdp-zig) > '$RAW/mve.txt' 2>&1"
+    x ": > '$RAW/ablation.txt'"
+    for s in $schemes; do
+        x "(cd '$R' && $ZIG build ablation -Dscheme=$s --cache-dir $HOME/.cache/bitdp-zig) >> '$RAW/ablation.txt' 2>&1"
     done
 }
 
@@ -281,21 +293,47 @@ session() { # power mode for the measurement steps; the mode found at the start 
     trap 'exit 130' INT TERM
 }
 
+# ---- insn: retired instructions and cycles of one run per bitdp configuration (perfcount.c, hardware
+# counters), with the column words the run executes (wordcols.py); counts, not timings, so outside the session
+icount() { # CELL SCHEME CPU ARGS...: one counted run of bitdp-bench-CPU SCHEME ARGS
+    local cell=$1 s=$2 cpu=$3 lanes=8 tool=bitdp-avx512
+    shift 3
+    [ $cpu = znver4 ] || { lanes=4 tool=bitdp-avx2; }
+    x "cd $IN && echo \"cell=$cell-$s tool=$tool \$(python3 -I $S/wordcols.py $lanes $*) \$(taskset -c $CORE $B/perfcount $B/bitdp-bench-$cpu $s $* 2>&1 | tr '\n' ' ')\" >> '$RAW/insn.txt'"
+}
+insn() {
+    x "cp '$R/bench/perfcount.c' '$R/bench/wordcols.py' $S/ && gcc -O2 -Wall $S/perfcount.c -o $B/perfcount"
+    x ": > '$RAW/insn.txt'"
+    for cpu in znver4 x86_64_v3; do
+        for s in edit bitpal tstv; do
+            icount insn-ava1000 $s $cpu ava q1000.txt s1000.txt
+            icount insn-dna1000 $s $cpu dna1000.tsv batch
+            icount insn-dna150 $s $cpu dna150.tsv batch
+        done
+        icount insn-prot300 blosum $cpu prot300.tsv batch
+    done
+    x "objdump -d $B/bitdp-bench-znver4 $B/bitdp-bench-x86_64_v3 | grep -c -P '\tvp?gather' | sed 's/^/gather instructions in both drivers: /' >> '$RAW/insn.txt' || true"
+    x "objdump -d $B/bitdp-bench-znver4 | grep -c -P '\tvpternlog' | sed 's/^/vpternlog instructions in the AVX-512 driver: /' >> '$RAW/insn.txt' || true"
+}
+
 started=0
 for step in "${STEPS[@]}"; do
     case $step in t4 | t5 | t6 | long | scan | compile | robust) [ $started = 1 ] || { session; started=1; } ;; esac
     echo "== $step $(date -Iseconds)"
     case $step in
-    deps) deps ;; build) build ;; env) env_log ;; inputs) inputs ;; ref) ref ;;
-    t4) t4 ;; t5) t5 ;; t6) t6 ;; long) long ;; scan) scan ;; compile) compile ;;
+    deps) deps ;; build) build ;; ops) ops ;; env) env_log ;; inputs) inputs ;; ref) ref ;;
+    t4) t4 ;; t5) t5 ;; t6) t6 ;; long) long ;; scan) scan ;; compile) compile ;; insn) insn ;;
     robust) # Table 4 in "Best performance", RREPS repetitions: a robustness check of its ratios
         [ $DRY = 1 ] || echo "$(date -Iseconds) set $(pm set performance)" >> "$RAW/power.txt"
         REPS=$RREPS LOG=runs-bestperf.txt t4
         [ $DRY = 1 ] || echo "$(date -Iseconds) set $(pm set efficiency)" >> "$RAW/power.txt" ;;
-    summary)
-        x "python3 -I $S/summary.py '$RAW/runs.txt' > '$RAW/summary.csv'"
-        x "mkdir -p '$GEN' && python3 -I $S/texmacros.py '$RAW/summary.csv' > '$GEN/numbers.tex'"
-        [ ! -f "$RAW/runs-bestperf.txt" ] || x "python3 -I $S/summary.py '$RAW/runs-bestperf.txt' > '$RAW/summary-bestperf.csv'" ;;
+    summary) # optional inputs quoted here: the repository path may hold spaces
+        opt=""
+        [ ! -f "$RAW/insn.txt" ] || opt="'$RAW/insn.txt'"
+        x "python3 -I '$R/bench/summary.py' '$RAW/runs.txt' '$RAW/scan.txt' '$RAW/compile.txt' $opt > '$RAW/summary.csv'"
+        opt=""
+        [ ! -f "$RAW/runs-bestperf.txt" ] || { x "python3 -I '$R/bench/summary.py' '$RAW/runs-bestperf.txt' > '$RAW/summary-bestperf.csv'"; opt="'$RAW/summary-bestperf.csv'"; }
+        x "mkdir -p '$GEN' && python3 -I '$R/bench/texmacros.py' '$RAW/summary.csv' $opt > '$GEN/numbers.tex'" ;;
     *) echo "unknown step $step" >&2; exit 2 ;;
     esac
 done

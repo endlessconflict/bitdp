@@ -1,0 +1,132 @@
+cell=t4-edit-150 rep=warm tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=127.57
+cell=t4-edit-150 rep=warm tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1758 gcups=102.391 ops_per_word=14
+cell=t4-edit-150 rep=warm tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=171.21
+cell=t4-edit-150 rep=warm tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1290 gcups=139.496 ops_per_word=14
+cell=t4-edit-150 rep=1 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=131.46
+cell=t4-edit-150 rep=1 tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1705 gcups=105.599 ops_per_word=14
+cell=t4-edit-150 rep=1 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=169.88
+cell=t4-edit-150 rep=1 tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1288 gcups=139.757 ops_per_word=14
+cell=t4-edit-150 rep=2 tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1716 gcups=104.918 ops_per_word=14
+cell=t4-edit-150 rep=2 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=169.14
+cell=t4-edit-150 rep=2 tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1386 gcups=129.890 ops_per_word=14
+cell=t4-edit-150 rep=2 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=129.83
+cell=t4-edit-150 rep=3 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=171.92
+cell=t4-edit-150 rep=3 tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1261 gcups=142.711 ops_per_word=14
+cell=t4-edit-150 rep=3 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=133.84
+cell=t4-edit-150 rep=3 tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1704 gcups=105.624 ops_per_word=14
+cell=t4-edit-150 rep=4 tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1264 gcups=142.416 ops_per_word=14
+cell=t4-edit-150 rep=4 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=134.10
+cell=t4-edit-150 rep=4 tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1712 gcups=105.132 ops_per_word=14
+cell=t4-edit-150 rep=4 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=172.99
+cell=t4-edit-150 rep=5 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=131.79
+cell=t4-edit-150 rep=5 tool=bitdp-avx2 bitdp-group4 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1711 gcups=105.226 ops_per_word=14
+cell=t4-edit-150 rep=5 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 gcups=172.80
+cell=t4-edit-150 rep=5 tool=bitdp-avx512 bitdp-group8 edit pairs=800000 cost_sum=65866932 hash=020ef7902bab3cc1 seconds=0.1276 gcups=141.024 ops_per_word=14
+cell=t4-bitpal-150 rep=warm tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.24
+cell=t4-bitpal-150 rep=warm tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.72
+cell=t4-bitpal-150 rep=warm tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4982 gcups=12.014 ops_per_word=181
+cell=t4-bitpal-150 rep=warm tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=22.49
+cell=t4-bitpal-150 rep=warm tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.0174 gcups=17.692 ops_per_word=181
+cell=t4-bitpal-150 rep=1 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.17
+cell=t4-bitpal-150 rep=1 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.55
+cell=t4-bitpal-150 rep=1 tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4951 gcups=12.040 ops_per_word=181
+cell=t4-bitpal-150 rep=1 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=23.52
+cell=t4-bitpal-150 rep=1 tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=0.9994 gcups=18.011 ops_per_word=181
+cell=t4-bitpal-150 rep=2 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.75
+cell=t4-bitpal-150 rep=2 tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4755 gcups=12.199 ops_per_word=181
+cell=t4-bitpal-150 rep=2 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=23.58
+cell=t4-bitpal-150 rep=2 tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=0.9998 gcups=18.003 ops_per_word=181
+cell=t4-bitpal-150 rep=2 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.35
+cell=t4-bitpal-150 rep=3 tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4861 gcups=12.112 ops_per_word=181
+cell=t4-bitpal-150 rep=3 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=23.48
+cell=t4-bitpal-150 rep=3 tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=0.9952 gcups=18.087 ops_per_word=181
+cell=t4-bitpal-150 rep=3 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.37
+cell=t4-bitpal-150 rep=3 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.79
+cell=t4-bitpal-150 rep=4 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=23.62
+cell=t4-bitpal-150 rep=4 tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=0.9939 gcups=18.110 ops_per_word=181
+cell=t4-bitpal-150 rep=4 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.42
+cell=t4-bitpal-150 rep=4 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.65
+cell=t4-bitpal-150 rep=4 tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4840 gcups=12.129 ops_per_word=181
+cell=t4-bitpal-150 rep=5 tool=bitdp-avx512 bitdp-group8 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.0114 gcups=17.797 ops_per_word=181
+cell=t4-bitpal-150 rep=5 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=15.28
+cell=t4-bitpal-150 rep=5 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=10.71
+cell=t4-bitpal-150 rep=5 tool=bitdp-avx2 bitdp-group4 bitpal pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 seconds=1.4941 gcups=12.048 ops_per_word=181
+cell=t4-bitpal-150 rep=5 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=800000 cost_sum=109712159 hash=3d82d3fbd31b68d7 gcups=23.64
+cell=t4-tstv-150 rep=warm tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3628 gcups=49.614 ops_per_word=51
+cell=t4-tstv-150 rep=warm tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3028 gcups=59.436 ops_per_word=51
+cell=t4-tstv-150 rep=1 tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3688 gcups=48.806 ops_per_word=51
+cell=t4-tstv-150 rep=1 tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.2857 gcups=62.994 ops_per_word=51
+cell=t4-tstv-150 rep=2 tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.2905 gcups=61.956 ops_per_word=51
+cell=t4-tstv-150 rep=2 tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3672 gcups=49.022 ops_per_word=51
+cell=t4-tstv-150 rep=3 tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3757 gcups=47.904 ops_per_word=51
+cell=t4-tstv-150 rep=3 tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.2822 gcups=63.782 ops_per_word=51
+cell=t4-tstv-150 rep=4 tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.2956 gcups=60.890 ops_per_word=51
+cell=t4-tstv-150 rep=4 tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.3666 gcups=49.104 ops_per_word=51
+cell=t4-tstv-150 rep=5 tool=bitdp-avx2 bitdp-group4 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.4073 gcups=44.198 ops_per_word=51
+cell=t4-tstv-150 rep=5 tool=bitdp-avx512 bitdp-group8 tstv pairs=800000 cost_sum=110250540 hash=79ca394a46cd7c71 seconds=0.2982 gcups=60.368 ops_per_word=51
+cell=t4-edit-1000 rep=warm tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=143.60
+cell=t4-edit-1000 rep=warm tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1192 gcups=167.744 ops_per_word=14
+cell=t4-edit-1000 rep=warm tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=183.74
+cell=t4-edit-1000 rep=warm tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0887 gcups=225.596 ops_per_word=14
+cell=t4-edit-1000 rep=1 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=143.64
+cell=t4-edit-1000 rep=1 tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1179 gcups=169.689 ops_per_word=14
+cell=t4-edit-1000 rep=1 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=183.49
+cell=t4-edit-1000 rep=1 tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0929 gcups=215.300 ops_per_word=14
+cell=t4-edit-1000 rep=2 tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1244 gcups=160.715 ops_per_word=14
+cell=t4-edit-1000 rep=2 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=180.34
+cell=t4-edit-1000 rep=2 tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0891 gcups=224.581 ops_per_word=14
+cell=t4-edit-1000 rep=2 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=144.11
+cell=t4-edit-1000 rep=3 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=182.42
+cell=t4-edit-1000 rep=3 tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0882 gcups=226.831 ops_per_word=14
+cell=t4-edit-1000 rep=3 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=144.02
+cell=t4-edit-1000 rep=3 tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1179 gcups=169.700 ops_per_word=14
+cell=t4-edit-1000 rep=4 tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0878 gcups=227.680 ops_per_word=14
+cell=t4-edit-1000 rep=4 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=144.71
+cell=t4-edit-1000 rep=4 tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1177 gcups=169.959 ops_per_word=14
+cell=t4-edit-1000 rep=4 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=174.17
+cell=t4-edit-1000 rep=5 tool=bgsa-myers-avx2 bgsa-myers-avx2 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=144.49
+cell=t4-edit-1000 rep=5 tool=bitdp-avx2 bitdp-group4 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.1177 gcups=169.879 ops_per_word=14
+cell=t4-edit-1000 rep=5 tool=bgsa-myers-avx512 bgsa-myers-avx512 pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c gcups=184.65
+cell=t4-edit-1000 rep=5 tool=bitdp-avx512 bitdp-group8 edit pairs=20000 cost_sum=10527277 hash=b38d27b74f4f386c seconds=0.0883 gcups=226.488 ops_per_word=14
+cell=t4-bitpal-1000 rep=warm tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.16
+cell=t4-bitpal-1000 rep=warm tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.35
+cell=t4-bitpal-1000 rep=warm tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.2006 gcups=16.658 ops_per_word=181
+cell=t4-bitpal-1000 rep=warm tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.34
+cell=t4-bitpal-1000 rep=warm tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8147 gcups=24.549 ops_per_word=181
+cell=t4-bitpal-1000 rep=1 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.20
+cell=t4-bitpal-1000 rep=1 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.30
+cell=t4-bitpal-1000 rep=1 tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.2040 gcups=16.611 ops_per_word=181
+cell=t4-bitpal-1000 rep=1 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.86
+cell=t4-bitpal-1000 rep=1 tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8172 gcups=24.475 ops_per_word=181
+cell=t4-bitpal-1000 rep=2 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.32
+cell=t4-bitpal-1000 rep=2 tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.2055 gcups=16.590 ops_per_word=181
+cell=t4-bitpal-1000 rep=2 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.83
+cell=t4-bitpal-1000 rep=2 tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8199 gcups=24.392 ops_per_word=181
+cell=t4-bitpal-1000 rep=2 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.06
+cell=t4-bitpal-1000 rep=3 tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.2012 gcups=16.650 ops_per_word=181
+cell=t4-bitpal-1000 rep=3 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.57
+cell=t4-bitpal-1000 rep=3 tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8199 gcups=24.392 ops_per_word=181
+cell=t4-bitpal-1000 rep=3 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.20
+cell=t4-bitpal-1000 rep=3 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.29
+cell=t4-bitpal-1000 rep=4 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.75
+cell=t4-bitpal-1000 rep=4 tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8130 gcups=24.599 ops_per_word=181
+cell=t4-bitpal-1000 rep=4 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.19
+cell=t4-bitpal-1000 rep=4 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.33
+cell=t4-bitpal-1000 rep=4 tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.1942 gcups=16.748 ops_per_word=181
+cell=t4-bitpal-1000 rep=5 tool=bitdp-avx512 bitdp-group8 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=0.8171 gcups=24.476 ops_per_word=181
+cell=t4-bitpal-1000 rep=5 tool=bgsa-bitpal-packed-avx2 bgsa-bitpal-packed-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=16.13
+cell=t4-bitpal-1000 rep=5 tool=bgsa-bitpal-nonpacked-avx2 bgsa-bitpal-nonpacked-avx2 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=11.35
+cell=t4-bitpal-1000 rep=5 tool=bitdp-avx2 bitdp-group4 bitpal pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 seconds=1.1889 gcups=16.823 ops_per_word=181
+cell=t4-bitpal-1000 rep=5 tool=bgsa-bitpal-packed-avx512 bgsa-bitpal-packed-avx512 pairs=20000 cost_sum=16001627 hash=ec51ad3bd9d32f69 gcups=24.82
+cell=t4-tstv-1000 rep=warm tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2809 gcups=71.191 ops_per_word=51
+cell=t4-tstv-1000 rep=warm tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2154 gcups=92.861 ops_per_word=51
+cell=t4-tstv-1000 rep=1 tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2818 gcups=70.978 ops_per_word=51
+cell=t4-tstv-1000 rep=1 tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2156 gcups=92.768 ops_per_word=51
+cell=t4-tstv-1000 rep=2 tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2135 gcups=93.658 ops_per_word=51
+cell=t4-tstv-1000 rep=2 tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2811 gcups=71.142 ops_per_word=51
+cell=t4-tstv-1000 rep=3 tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2925 gcups=68.371 ops_per_word=51
+cell=t4-tstv-1000 rep=3 tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2227 gcups=89.795 ops_per_word=51
+cell=t4-tstv-1000 rep=4 tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2235 gcups=89.501 ops_per_word=51
+cell=t4-tstv-1000 rep=4 tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2835 gcups=70.546 ops_per_word=51
+cell=t4-tstv-1000 rep=5 tool=bitdp-avx2 bitdp-group4 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2819 gcups=70.946 ops_per_word=51
+cell=t4-tstv-1000 rep=5 tool=bitdp-avx512 bitdp-group8 tstv pairs=20000 cost_sum=17620315 hash=5af923fd5418241f seconds=0.2221 gcups=90.054 ops_per_word=51

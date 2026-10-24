@@ -808,6 +808,103 @@ test "packed scan (several patterns per word) reports exactly what the scalar DP
     }
 }
 
+test "adversarial inputs match the scalar oracle on every path: homopolymers, the costliest pair, periodic and two-letter sequences, text bytes outside the alphabet, word-boundary lengths, n = 0" {
+    const gpa = std.testing.allocator;
+    const ms = [_]usize{ 1, 2, 62, 63, 64, 125, 126, 127, 188, 189, 300 };
+    const ns = [_]usize{ 0, 1, 2, 5, 63, 126, 400 };
+    const Oracle = struct {
+        /// `s` with every text byte outside its alphabet charged the largest cost, as the kernels do.
+        fn of(comptime s: Scheme) Scheme {
+            const F = struct {
+                const top = blk: {
+                    @setEvalBranchQuota(10_000);
+                    var c: i32 = std.math.minInt(i32);
+                    for (s.alphabet) |a| for (s.alphabet) |b| {
+                        c = @max(c, s.cost(a, b));
+                    };
+                    break :blk c;
+                };
+                fn cost(a: u8, b: u8) i32 {
+                    return if (std.mem.indexOfScalar(u8, s.alphabet, b) == null) top else s.cost(a, b);
+                }
+            };
+            var o = s;
+            o.sub = &F.cost;
+            return o;
+        }
+        /// Kind 0 homopolymer, 1 the costliest pair, 2 periodic out of phase, 3 two letters at random,
+        /// 4 text bytes outside the alphabet; the text depends only on (kind, n), so texts can be shared.
+        fn fill(comptime s: Scheme, kind: usize, out: []u8, is_text: bool) void {
+            const worst = comptime blk: {
+                @setEvalBranchQuota(10_000);
+                var w = [2]u8{ s.alphabet[0], s.alphabet[0] };
+                for (s.alphabet) |a| for (s.alphabet) |b| {
+                    if (s.cost(a, b) > s.cost(w[0], w[1])) w = .{ a, b };
+                };
+                break :blk w;
+            };
+            var prng = std.Random.DefaultPrng.init(kind * 1000 + out.len * 2 + @intFromBool(is_text));
+            const rnd = prng.random();
+            for (out, 0..) |*x, i| x.* = switch (kind) {
+                0 => s.alphabet[0],
+                1 => worst[@intFromBool(is_text)],
+                2 => s.alphabet[(i + @intFromBool(is_text)) % 2],
+                3 => s.alphabet[rnd.uintLessThan(usize, 2)],
+                else => if (is_text and rnd.boolean()) '#' else s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)],
+            };
+        }
+    };
+    var buf: [301]i64 = undefined;
+    var store: [ms.len * ns.len][2][400]u8 = undefined;
+    var ps: [ms.len * ns.len][]const u8 = undefined;
+    var ts: [ms.len * ns.len][]const u8 = undefined;
+    var out: [ms.len * ns.len]i64 = undefined;
+    const wide: Scheme = .{ .match = -1, .mismatch = 14, .gap = 15 }; // |Delta| = 32, the largest accepted
+    try std.testing.expectEqual(32, Kernel(wide).levels + 1);
+    inline for (comptime [_]Scheme{ .{}, schemes.bitpal[1], schemes.ts_tv, schemes.blosum62Linear(4), wide }) |s0| {
+        inline for ([_]Scheme.Mode{ .global, .search }) |mode| {
+            const s = comptime blk: {
+                var x = s0;
+                x.mode = mode;
+                break :blk x;
+            };
+            const K = Kernel(s);
+            const o = comptime Oracle.of(s);
+            for (0..5) |kind| {
+                for (ms, 0..) |m, a| for (ns, 0..) |n, b| {
+                    const i = a * ns.len + b;
+                    Oracle.fill(s, kind, store[i][0][0..m], false);
+                    Oracle.fill(s, kind, store[i][1][0..n], true);
+                    ps[i] = store[i][0][0..m];
+                    ts[i] = store[i][1][0..n];
+                };
+                try K.distances(gpa, &ps, &ts, &out);
+                for (ps, ts, out) |p, t, got| {
+                    const want = reference.scalar(o, p, t, &buf);
+                    try std.testing.expectEqual(want, got);
+                    var al = try K.Aligner.init(gpa, p);
+                    defer al.deinit(gpa);
+                    try std.testing.expectEqual(want, al.distance(t));
+                    if (p.len < 63) try std.testing.expectEqual(want, K.distance(p, t));
+                }
+                // Shared text: for each n, the patterns of every length in groups of K.lanes.
+                for (0..ns.len) |b| {
+                    var start: usize = 0;
+                    while (start < ms.len) : (start += K.lanes) {
+                        const cnt = @min(K.lanes, ms.len - start);
+                        var gp: [K.lanes][]const u8 = undefined;
+                        for (0..cnt) |l| gp[l] = ps[(start + l) * ns.len + b];
+                        var g = try K.Group.init(gpa, gp[0..cnt]);
+                        defer g.deinit(gpa);
+                        const r = g.distances(ts[b]);
+                        for (0..cnt) |l| try std.testing.expectEqual(reference.scalar(o, gp[l], ts[b], &buf), r[l]);
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// D(m, n) in search mode: the pattern against a suffix of `text` ending at its end.
 fn lastRow(s: Scheme, p: []const u8, text: []const u8, col: []i64) i64 {
     for (col[0 .. p.len + 1], 0..) |*x, i| x.* = @as(i64, @intCast(i)) * s.gap;

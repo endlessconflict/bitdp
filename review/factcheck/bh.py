@@ -423,7 +423,7 @@ def main():
     # §4.3 read back: every number in the Bergeron-Hamel passage = the counts above (global mode).
     sec = re.search(r"Bergeron and Hamel give no operation count.*?not fewer than the lower bound\.", tex, re.S)
     r.check("BH3", sec is not None, "§4.3 has the Bergeron-Hamel count passage")
-    r.check("BH3", "in \\texttt{review/factcheck/bh.py} and \\texttt{bh\\_listing.py} of release v0.1.0-paper" in tex
+    r.check("BH3", "in \\texttt{review/factcheck/bh.py} and \\texttt{bh\\_listing.py} of release v0.2.0-paper" in tex
             and all(os.path.exists(os.path.join(os.path.dirname(__file__), f)) for f in ("bh.py", "bh_listing.py")),
             "§4.3 cites the B&H implementation by path and release (E3/R3); both files exist")
     if sec:

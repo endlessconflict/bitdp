@@ -8,7 +8,7 @@ Global alignment cost of every pair in a file, computed by bitdp and by the othe
 bench/reproduce.sh --dry-run     # list every step and command
 bench/reproduce.sh --quick       # tiny inputs, 2 repetitions, output under ~/bitdp-r2-quick: a test of the harness
 bench/reproduce.sh               # the measurement session (about 1-2 h)
-bench/reproduce.sh t5 summary    # selected steps: deps build env inputs ref t4 t5 t6 long scan robust summary
+bench/reproduce.sh t5 summary    # selected steps: deps build ops env inputs ref t4 t5 t6 long scan compile robust insn summary
 ```
 
 - `deps`: `deps.sh` fetches every competitor at a pinned commit into `~/bitdp-deps` and builds the libraries (edlib v1.2.7, parasail v2.6.2, WFA2-lib v2.3.6, A\*PA2 bf2e14e with its pinned Rust nightly; ksw2 289609b, BGSA dffcf9e and SeqAn 2.5.3 are compiled with their drivers); `versions.txt` records the commits.
@@ -17,8 +17,9 @@ bench/reproduce.sh t5 summary    # selected steps: deps build env inputs ref t4 
 - `ref`: `dp_check.c`, a plain scalar DP that shares no code with the aligners, gives the reference cost of every pair.
 - `t4`, `t5`, `t6`, `long`: the cells of the tables. Each cell runs every tool once as a discarded warm-up, then `REPS` (10) times in round-robin order, the starting tool rotating by one per repetition, each run pinned with `taskset -c 2`. After every run the hash is compared with the reference; on a mismatch the harness reruns the tool with `BENCH_DUMP` set, prints the first differing pair and stops. parasail's striped kernels are known to return wrong costs for linear gaps (below): their runs are kept and marked `expected-mismatch`.
 - `scan`: the genome scan, hit sets checked once against the scalar DP per configuration, then timed runs.
-- `robust`: Table 4 again in the Windows power mode "Best performance", as a robustness check of its ratios.
-- `summary`: `summary.py` writes `raw/r2/summary.csv`: per cell and tool the median, quartiles and range of the rate, and for every pair of tools the median and quartiles of their ratio within the same repetition.
+- `robust`: the all-against-all cells of step `t4` (the paper's Table 2) again in the Windows power mode "Best performance", as a robustness check of their ratios.
+- `insn`: one run per bitdp configuration under `perfcount.c`, which reads the processor's counters of retired user-space instructions and cycles (Linux `perf_event_open`; WSL2 exposes them), with the column words and DP cells of the run from `wordcols.py`; also the number of gather and `vpternlog` instructions in the drivers (`raw/r2/insn.txt`). Counts, not timings: this step runs outside the power-mode session.
+- `summary`: `summary.py` writes `raw/r2/summary.csv`: per cell and tool the median, quartiles and range of the rate, and for every pair of tools the median and quartiles of their ratio within the same repetition; also scan hits, compile cost and instructions per column word and per cell. `texmacros.py` turns it into `paper/generated/numbers.tex`.
 
 The measurement steps set the Windows power mode "Best power efficiency" (`powermode.ps1`, through WSL interop), log processor performance once per second (`raw/r2/power-samples.txt`) and restore the mode found at the start (`raw/r2/power.txt`). Rates from sessions in different power modes must not be combined (RESULTS.md).
 
@@ -52,7 +53,7 @@ gcc -O3 -march=native parasail_check.c -o parasail_check -I$HOME/bitdp-deps/para
 ./parasail_check edit dna150.tsv
 ```
 
-The striped global kernels fail only when the gap opening penalty equals the extension penalty, that is, for linear gaps, which parasail's README allows; RESULTS.md has the counts. A minimal case is `TAA` against `T` with match 0, mismatch -1, open = extend = 1: every striped entry point returns -3, while scan and the scalar `parasail_nw` return the optimum -2.
+The striped global kernels fail only when the gap opening penalty equals the extension penalty, that is, for linear gaps, which parasail's README allows; `raw/r2/parasail_check.txt` has the counts on the session's inputs. A minimal case is `TAA` against `T` with match 0, mismatch -1, open = extend = 1: every striped entry point returns -3, while scan and the scalar `parasail_nw` return the optimum -2.
 
 ## Other programs
 
@@ -60,4 +61,4 @@ The striped global kernels fail only when the gap opening penalty equals the ext
 - `ablation.zig` (`zig build ablation -Dscheme=N`): operation counts per builder configuration.
 - `median3.sh`: the median of three runs, as RESULTS.md used before `reproduce.sh`.
 
-RESULTS.md and `raw/` (outside `raw/r2/`) hold the sessions of 2026-09-28 to 2026-10-12, measured by hand with three runs per cell; `raw/r2/` holds the sessions of `reproduce.sh`.
+`raw/r2/` holds the session of `reproduce.sh` behind every throughput number; `raw/` (outside `raw/r2/`) keeps the logs of the sessions of 2026-09-28 to 2026-10-12, measured by hand with three runs per cell, whose tables are in RESULTS.md at commit 39cfd5b.
