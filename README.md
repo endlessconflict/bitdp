@@ -51,12 +51,12 @@ parasail's striped global kernels, which would otherwise be its fastest, return 
 
 ## Limits
 
-- Global and search (semi-global) modes, linear gap costs only. With affine gaps the value carried down a column can shift both up and down between thresholds, the copy graph acquires cycles, and the cascade above no longer applies.
-- At most 32 distinct score differences and 24 distinct substitution costs.
+- Global and search (semi-global) modes, linear gap costs only. With affine gaps, and the vertical-gap value written relative to the previous column, the value carried down a column can shift both up and down between thresholds and the copy graph acquires cycles. Taking the horizontal difference of the vertical-gap value as the state restores the form the cascade needs (paper, Section 5), but no affine kernel is implemented.
+- At most 32 distinct score differences, 24 distinct substitution costs and 2048 nodes in a derived program (inputs included); the compiler rejects larger schemes.
 - The derived program is not always the shortest. For indel distance it needs 6 operations, while the bit-vector LCS step (V + (V & M)) | (V - (V & M)), in the form Hyyrö gives, does the same column in 4.
 - The carry-chain part still grows quadratically with the spread between substitution costs, which is why protein matrices are slow; Bergeron and Hamel's construction grows as O(c log c) in the gap cost c and the count of its listing is lower on six of the ten schemes in the table above.
 - `Packed` handles search mode only, with patterns of at most 63 characters.
-- Bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution.
+- Text bytes outside the scheme's alphabet (N, for instance) count as the costliest substitution; pattern bytes outside it are costed by the scheme's cost function.
 - Deriving a scheme happens inside the Zig compiler. Under Windows 11 with Zig 0.16.0, a debug build of a program that derives one kernel compiles in 2 seconds for unit costs and in 6 seconds and 487 MB of compiler memory for BLOSUM62; an optimized build takes 8 and 14 seconds.
 
 ## Usage
