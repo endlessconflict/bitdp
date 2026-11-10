@@ -420,6 +420,12 @@ def main():
            f"{sum(row[4] == row[5] for row in t1)}, > on {sum(row[4] > row[5] for row in t1)}; "
            f"ours < B&H word on {sum(row[4] < row[6] for row in t1)}, > on {sum(row[4] > row[6] for row in t1)}")
 
+    # R04 E2: the bit-plane realization is below the derived program on BLOSUM62 only
+    below = [str(row[0]) for row in t1 if row[6] < row[4]]
+    r.check("BH4b", len(t1) == 10 and len(below) == 1 and "BLOSUM62" in below[0]
+            and "and 760 for BLOSUM62, below our 799 there and above our count on the other nine schemes of Table~\\ref{tab:ops}" in tex,
+            "B&H planes below ours on BLOSUM62 only, above on the other nine schemes of Table 1 (Appendix B)", f"below on {below}")
+
     # §4.3 read back: every number in the Bergeron-Hamel passage = the counts above (global mode).
     sec = re.search(r"Bergeron and Hamel give no operation count.*?not fewer than the lower bound\.", tex, re.S)
     r.check("BH3", sec is not None, "§4.3 has the Bergeron-Hamel count passage")

@@ -47,7 +47,7 @@ On independent pairs, where each lane has its own text, batched bitdp is faster 
 
 On a real genome, 32 CRISPR-style 20 nt guides scanned along *E. coli* K-12 (4.6 Mbp) with transition/transversion costs return the same 78 sites as the plain DP, at 12.6 GCUPS with AVX-512. A 20 nt guide leaves most of a 64-bit word empty, so `Packed` puts three guides in each word and a spacer row after each guide to stop carries and shifts. On 96 guides that raises the scan from 12.5 to 31.1 GCUPS with AVX-512 and from 8.45 to 22.7 with AVX2, with hits identical to the unpacked kernel and the plain DP. Hyyrö, Fredriksson and Navarro packed patterns this way for unit costs in 2005; here the same spacer rule works for every derived kernel in search mode.
 
-parasail's striped global kernels, which would otherwise be its fastest, return wrong costs on every workload (on the 150 bp edit set, 426 of 100 000 pairs score below their optimum with 16-bit lanes and 231 with 32-bit lanes, and the saturation flag is never set), so the comparison leaves them out. The wrong scores appear only when the gap opening penalty equals the extension penalty, which is how linear gaps are expressed in parasail; `bench/parasail_check.c` reproduces them.
+parasail's striped global kernels, which would otherwise be its fastest, return wrong costs on every set they ran on, the 150 bp, 1 kbp and protein pairs (on the 150 bp edit set, 426 of 100 000 pairs score below their optimum with 16-bit lanes and 231 with 32-bit lanes, and the saturation flag is never set), so the comparison leaves them out. The wrong scores appear only when the gap opening penalty equals the extension penalty, which is how linear gaps are expressed in parasail; `bench/parasail_check.c` reproduces them.
 
 ## Limits
 

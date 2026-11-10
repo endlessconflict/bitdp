@@ -61,4 +61,4 @@ The striped global kernels fail only when the gap opening penalty equals the ext
 - `ablation.zig` (`zig build ablation -Dscheme=N`): operation counts per builder configuration.
 - `median3.sh`: the median of three runs, as RESULTS.md used before `reproduce.sh`.
 
-`raw/r2/` holds the session of `reproduce.sh` behind every throughput number; `raw/` (outside `raw/r2/`) keeps the logs of the sessions of 2026-09-28 to 2026-10-12, measured by hand with three runs per cell, whose tables are in RESULTS.md at commit 39cfd5b.
+`raw/r2/` holds the session of `reproduce.sh` behind every throughput number; `raw/` (outside `raw/r2/`) keeps the logs of the sessions of 2026-09-28 to 2026-10-12, measured by hand with three runs per cell, whose tables are in RESULTS.md at commit 39cfd5b. `raw/r2/env.txt` records commit a8ddbc4, the commit of the unpublished paper branch on which the session ran. Its `src/` and `bench/` trees are those of the published commit ac80e44: `git rev-parse ac80e44:src ac80e44:bench` prints 763b35b1408b9d38f64a752908204c63674e3419 and ca81f48a020553264bcda882bfe8710faceaa1dd, the tree hashes that a8ddbc4 has.

@@ -303,3 +303,30 @@ def chains_of(delta, cap):
     """§3.3: #{τ ∈ Δ : min Δ < τ <= cap}."""
     lo = min(delta)
     return sum(1 for t in delta if lo < t <= cap)
+
+
+def level_of(x, delta):
+    """[s >= x] as a level of Δ: None if constant (x <= min Δ or x > max Δ)."""
+    if x <= min(delta) or x > max(delta):
+        return None
+    return min(y for y in delta if y >= x)
+
+
+def has_cycle(edges, nodes):
+    """Cycle among distinct nodes (self-loops ignored), by Kahn's algorithm."""
+    indeg = {n: 0 for n in nodes}
+    adj = {n: set() for n in nodes}
+    for a, b in edges:
+        if a != b and b not in adj[a]:
+            adj[a].add(b)
+            indeg[b] += 1
+    queue = [n for n in nodes if indeg[n] == 0]
+    seen = 0
+    while queue:
+        n = queue.pop()
+        seen += 1
+        for b in adj[n]:
+            indeg[b] -= 1
+            if indeg[b] == 0:
+                queue.append(b)
+    return seen != len(nodes)
