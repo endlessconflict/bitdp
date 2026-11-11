@@ -42,7 +42,7 @@ if [ "$STEP" = build ] || [ "$STEP" = all ]; then
     J=$(nproc)
     # edlib: one translation unit, linked into the driver.
     g++ -O3 -march=native -c edlib/edlib/src/edlib.cpp -I edlib/edlib/include -o edlib/edlib.o
-    # parasail: autotools, because only its configure script builds the AVX-512 kernels.
+    # parasail: autotools (its configure script selects the instruction sets; this version has no AVX-512 alignment kernels).
     (cd parasail && { [ -x configure ] || autoreconf -fi; } &&
         ./configure -q --enable-static --disable-shared --prefix="$DEPS/parasail/install" CFLAGS="-O3 -march=native" &&
         make -j"$J" && make install) > parasail/build.log 2>&1
