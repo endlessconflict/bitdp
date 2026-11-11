@@ -1,0 +1,5 @@
+2026-11-10T21:26:42-05:00 start overlay=ded574b5-45a0-4f42-8737-46345c09c238 mode=performance ac=True
+2026-11-10T21:26:43-05:00 set overlay=961cc777-2547-4f9d-8174-7d86181b8a7a mode=efficiency ac=True
+2026-11-10T23:19:44-05:00 set overlay=ded574b5-45a0-4f42-8737-46345c09c238 mode=performance ac=True
+2026-11-10T23:51:54-05:00 set overlay=961cc777-2547-4f9d-8174-7d86181b8a7a mode=efficiency ac=True
+2026-11-10T23:53:20-05:00 restore overlay=ded574b5-45a0-4f42-8737-46345c09c238 mode=performance ac=True

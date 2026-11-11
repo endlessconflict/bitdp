@@ -1,0 +1,44 @@
+edit (0,1,1) live ops: input=3 not=1 and=6 or=4 xor=1 add=1 shl0=1
+edit (0,1,1):  all=14  no merge networks=14  no truth tables=19  direct only=23  B&H planes=45  best of both=14  B&H listing=52
+indel (0,2,1) live ops: input=2 not=1 and=2 or=1 xor=1 add=1
+indel (0,2,1):  all=6  no merge networks=6  no truth tables=11  direct only=11  B&H planes=48  best of both=6  B&H listing=52
+(0,1,2) live ops: input=5 not=1 and=12 or=10 xor=1 add=1 shl0=3
+(0,1,2):  all=28  no merge networks=28  no truth tables=35  direct only=47  B&H planes=115  best of both=28  B&H listing=129
+(0,3,2) live ops: input=5 not=8 and=19 or=16 xor=6 add1=3 shl1=1
+(0,3,2):  all=57  no merge networks=57  no truth tables=57  direct only=68  B&H planes=118  best of both=57  B&H listing=129
+bitpal (2,-3,-5) live ops: input=13 not=24 and=64 or=59 xor=10 add1=5 shl1=7
+bitpal (2,-3,-5):  all=181  no merge networks=301  no truth tables=181  direct only=301  B&H planes=393  best of both=181  B&H listing=414
+bitpal (3,-4,-6) live ops: input=16 not=30 and=93 or=86 xor=14 add1=7 shl1=8
+bitpal (3,-4,-6):  all=253  no merge networks=470  no truth tables=253  direct only=470  B&H planes=588  best of both=253  B&H listing=615
+bitpal (4,-5,-9) live ops: input=23 not=44 and=151 or=142 xor=18 add1=9 shl1=13
+bitpal (4,-5,-9):  all=399  no merge networks=851  no truth tables=399  direct only=851  B&H planes=798  best of both=399  B&H listing=831
+bitpal (4,-7,-11) live ops: input=27 not=52 and=197 or=186 xor=22 add1=11 shl1=15
+bitpal (4,-7,-11):  all=509  no merge networks=1176  no truth tables=509  direct only=1176  B&H planes=934  best of both=509  B&H listing=971
+tstv live ops: input=6 not=8 and=16 or=15 xor=4 add1=2 shl1=2
+tstv:  all=51  no merge networks=73  no truth tables=51  direct only=73  B&H planes=118  best of both=51  B&H listing=129
+blosum62, gap 4 live ops: input=33 not=38 and=302 or=391 xor=30 add1=15 shl1=4
+blosum62, gap 4:  all=799  no merge networks=1742  no truth tables=799  direct only=1742  B&H planes=732  best of both=732  B&H listing=760
+sweep (0,1,1): k=3 chains=1 ops=14 bh=45
+sweep (-1,1,2): k=6 chains=2 ops=56 bh=173
+sweep (0,1,2): k=5 chains=1 ops=28 bh=115
+sweep (-1,2,3): k=8 chains=3 ops=89 bh=269
+sweep (0,1,3): k=7 chains=1 ops=55 bh=170
+sweep (-1,3,4): k=10 chains=4 ops=126 bh=333
+sweep (0,1,4): k=9 chains=1 ops=71 bh=263
+sweep (-1,4,5): k=12 chains=5 ops=165 bh=393
+sweep (0,1,5): k=11 chains=1 ops=95 bh=327
+sweep (-1,5,6): k=14 chains=6 ops=210 bh=454
+sweep (0,1,6): k=13 chains=1 ops=119 bh=387
+sweep (-1,6,7): k=16 chains=7 ops=253 bh=588
+sweep (0,1,7): k=15 chains=1 ops=139 bh=448
+sweep (-1,7,8): k=18 chains=8 ops=302 bh=661
+sweep (0,1,8): k=17 chains=1 ops=155 bh=579
+sweep (-1,8,9): k=20 chains=9 ops=351 bh=729
+sweep (0,1,9): k=19 chains=1 ops=183 bh=652
+sweep (-1,9,10): k=22 chains=10 ops=408 bh=798
+sweep (0,1,10): k=21 chains=1 ops=215 bh=720
+sweep (-1,10,11): k=24 chains=11 ops=461 bh=864
+sweep (0,1,11): k=23 chains=1 ops=243 bh=789
+sweep (-1,11,12): k=26 chains=12 ops=522 bh=934
+sweep (0,1,12): k=25 chains=1 ops=267 bh=855
+sweep (-1,12,13): k=28 chains=13 ops=579 bh=1000

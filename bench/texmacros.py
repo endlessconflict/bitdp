@@ -13,7 +13,8 @@ correct costs: \\iqrmed and \\iqrmax (median and largest interquartile range in 
 \\rangemax (largest range in percent of the median); with the second file, over the cells it repeats:
 \\perfmin and \\perfmax (smallest and largest ratio of a median rate there to the same median here) and
 \\perfshift (largest change of a median paired ratio between two tools of the same register width, after
-rounding both to two decimals). Bounds are
+rounding both to two decimals) and \\perfrel (the largest such change in percent of the ratio here, unrounded
+medians). Bounds are
 rounded outwards (largest values up, smallest down), so "at most" and "from ... to" stay true.
 """
 import csv
@@ -96,7 +97,9 @@ def main():
         shift = [abs(there[k].quantize(cent, rounding=ROUND_HALF_UP) - here[k].quantize(cent, rounding=ROUND_HALF_UP))
                  for k in there if k[0] == "ratio" and width(k[2]) == width(k[3])]
         stats |= {"perfmin": min(speed).quantize(cent, rounding=ROUND_FLOOR),
-                  "perfmax": max(speed).quantize(cent, rounding=ROUND_CEILING), "perfshift": max(shift)}
+                  "perfmax": max(speed).quantize(cent, rounding=ROUND_CEILING), "perfshift": max(shift),
+                  "perfrel": max(abs(there[k] / here[k] - 1) * 100 for k in there
+                                 if k[0] == "ratio" and width(k[2]) == width(k[3])).quantize(tenth, rounding=ROUND_CEILING)}
     for name, value in stats.items():
         out.append(f"\\newcommand{{\\{name}}}{{{value}}}")
     out.append("\\makeatother")

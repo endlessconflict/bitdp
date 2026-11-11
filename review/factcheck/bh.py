@@ -447,7 +447,7 @@ def main():
         share = f"{words.get(len(lower))} of the {words.get(len(t1))} schemes of Table~\\ref{{tab:ops}}"
         r.check("BH3", names == ["(0, 3, 2)", "BitPAl (2, $-3$, $-5$)", "BitPAl (3, $-4$, $-6$)", "BitPAl (4, $-5$, $-9$)",
                                  "BitPAl (4, $-7$, $-11$)", "BLOSUM62, gap 4"]
-                and f"it is lower than ours on {share}, namely (0, 3, 2), BitPAl's four weight sets and BLOSUM62 " + listed in txt,
+                and f"it is lower than ours on {share}, namely (0, 3, 2), BitPAl's four weight sets and BLOSUM62." in txt,
                 "§4.3: rows where their lower bound is below ours, and their numbers", f"{names} {listed}")
         r.check("BH3", f"and the count of its listing is below ours on {share} (Section" in re.sub(r"\s+", " ", tex),
                 "§5: share of Table 1 schemes where their lower bound is below ours", share)

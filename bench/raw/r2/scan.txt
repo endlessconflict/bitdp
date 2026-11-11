@@ -1,0 +1,144 @@
+cell=scan-znver4-32 rep=verify genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.236 s, 12.60 GCUPS
+cell=scan-znver4-32 rep=verify scalar check: 78 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 12.357 s (0.24 GCUPS)
+cell=scan-znver4-32 rep=1 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.237 s, 12.55 GCUPS
+cell=scan-znver4-32 rep=2 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.237 s, 12.54 GCUPS
+cell=scan-znver4-32 rep=3 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.238 s, 12.46 GCUPS
+cell=scan-znver4-32 rep=4 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.237 s, 12.53 GCUPS
+cell=scan-znver4-32 rep=5 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.239 s, 12.45 GCUPS
+cell=scan-znver4-32 rep=6 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.239 s, 12.42 GCUPS
+cell=scan-znver4-32 rep=7 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.240 s, 12.37 GCUPS
+cell=scan-znver4-32 rep=8 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.237 s, 12.54 GCUPS
+cell=scan-znver4-32 rep=9 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.243 s, 12.21 GCUPS
+cell=scan-znver4-32 rep=10 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8: 78 hits in 0.238 s, 12.49 GCUPS
+cell=scan-znver4-32packed rep=verify genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.146 s, 20.31 GCUPS
+cell=scan-znver4-32packed rep=verify scalar check: 78 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 12.426 s (0.24 GCUPS)
+cell=scan-znver4-32packed rep=1 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.143 s, 20.73 GCUPS
+cell=scan-znver4-32packed rep=2 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.147 s, 20.25 GCUPS
+cell=scan-znver4-32packed rep=3 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.143 s, 20.73 GCUPS
+cell=scan-znver4-32packed rep=4 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.147 s, 20.17 GCUPS
+cell=scan-znver4-32packed rep=5 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.144 s, 20.63 GCUPS
+cell=scan-znver4-32packed rep=6 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.147 s, 20.26 GCUPS
+cell=scan-znver4-32packed rep=7 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.144 s, 20.68 GCUPS
+cell=scan-znver4-32packed rep=8 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.143 s, 20.71 GCUPS
+cell=scan-znver4-32packed rep=9 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.145 s, 20.53 GCUPS
+cell=scan-znver4-32packed rep=10 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=8 packed: 78 hits in 0.143 s, 20.76 GCUPS
+cell=scan-znver4-48 rep=verify genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.357 s, 12.48 GCUPS
+cell=scan-znver4-48 rep=verify scalar check: 128 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 18.509 s (0.24 GCUPS)
+cell=scan-znver4-48 rep=1 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.358 s, 12.45 GCUPS
+cell=scan-znver4-48 rep=2 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.359 s, 12.42 GCUPS
+cell=scan-znver4-48 rep=3 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.361 s, 12.36 GCUPS
+cell=scan-znver4-48 rep=4 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.352 s, 12.67 GCUPS
+cell=scan-znver4-48 rep=5 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.355 s, 12.56 GCUPS
+cell=scan-znver4-48 rep=6 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.360 s, 12.36 GCUPS
+cell=scan-znver4-48 rep=7 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.355 s, 12.57 GCUPS
+cell=scan-znver4-48 rep=8 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.355 s, 12.55 GCUPS
+cell=scan-znver4-48 rep=9 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.356 s, 12.51 GCUPS
+cell=scan-znver4-48 rep=10 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8: 128 hits in 0.359 s, 12.41 GCUPS
+cell=scan-znver4-48packed rep=verify genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.144 s, 30.89 GCUPS
+cell=scan-znver4-48packed rep=verify scalar check: 128 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 18.718 s (0.24 GCUPS)
+cell=scan-znver4-48packed rep=1 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.146 s, 30.48 GCUPS
+cell=scan-znver4-48packed rep=2 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.143 s, 31.17 GCUPS
+cell=scan-znver4-48packed rep=3 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.143 s, 31.19 GCUPS
+cell=scan-znver4-48packed rep=4 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.145 s, 30.68 GCUPS
+cell=scan-znver4-48packed rep=5 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.145 s, 30.78 GCUPS
+cell=scan-znver4-48packed rep=6 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.143 s, 31.10 GCUPS
+cell=scan-znver4-48packed rep=7 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.146 s, 30.44 GCUPS
+cell=scan-znver4-48packed rep=8 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.144 s, 31.01 GCUPS
+cell=scan-znver4-48packed rep=9 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.143 s, 31.09 GCUPS
+cell=scan-znver4-48packed rep=10 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=8 packed: 128 hits in 0.144 s, 31.05 GCUPS
+cell=scan-znver4-96 rep=verify genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.717 s, 12.42 GCUPS
+cell=scan-znver4-96 rep=verify scalar check: 306 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 36.769 s (0.24 GCUPS)
+cell=scan-znver4-96 rep=1 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.718 s, 12.42 GCUPS
+cell=scan-znver4-96 rep=2 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.714 s, 12.48 GCUPS
+cell=scan-znver4-96 rep=3 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.711 s, 12.54 GCUPS
+cell=scan-znver4-96 rep=4 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.711 s, 12.54 GCUPS
+cell=scan-znver4-96 rep=5 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.715 s, 12.47 GCUPS
+cell=scan-znver4-96 rep=6 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.712 s, 12.52 GCUPS
+cell=scan-znver4-96 rep=7 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.711 s, 12.53 GCUPS
+cell=scan-znver4-96 rep=8 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.714 s, 12.49 GCUPS
+cell=scan-znver4-96 rep=9 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.710 s, 12.55 GCUPS
+cell=scan-znver4-96 rep=10 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8: 306 hits in 0.714 s, 12.48 GCUPS
+cell=scan-znver4-96packed rep=verify genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.302 s, 29.51 GCUPS
+cell=scan-znver4-96packed rep=verify scalar check: 306 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 37.093 s (0.24 GCUPS)
+cell=scan-znver4-96packed rep=1 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.285 s, 31.25 GCUPS
+cell=scan-znver4-96packed rep=2 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.288 s, 30.96 GCUPS
+cell=scan-znver4-96packed rep=3 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.287 s, 31.11 GCUPS
+cell=scan-znver4-96packed rep=4 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.291 s, 30.68 GCUPS
+cell=scan-znver4-96packed rep=5 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.287 s, 31.05 GCUPS
+cell=scan-znver4-96packed rep=6 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.291 s, 30.67 GCUPS
+cell=scan-znver4-96packed rep=7 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.289 s, 30.79 GCUPS
+cell=scan-znver4-96packed rep=8 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.288 s, 30.92 GCUPS
+cell=scan-znver4-96packed rep=9 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.291 s, 30.67 GCUPS
+cell=scan-znver4-96packed rep=10 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=8 packed: 306 hits in 0.286 s, 31.19 GCUPS
+cell=scan-x86_64_v3-32 rep=verify genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.354 s, 8.38 GCUPS
+cell=scan-x86_64_v3-32 rep=verify scalar check: 78 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 13.108 s (0.23 GCUPS)
+cell=scan-x86_64_v3-32 rep=1 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.376 s, 7.90 GCUPS
+cell=scan-x86_64_v3-32 rep=2 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.374 s, 7.94 GCUPS
+cell=scan-x86_64_v3-32 rep=3 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.369 s, 8.04 GCUPS
+cell=scan-x86_64_v3-32 rep=4 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.352 s, 8.44 GCUPS
+cell=scan-x86_64_v3-32 rep=5 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.352 s, 8.44 GCUPS
+cell=scan-x86_64_v3-32 rep=6 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.352 s, 8.44 GCUPS
+cell=scan-x86_64_v3-32 rep=7 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.349 s, 8.52 GCUPS
+cell=scan-x86_64_v3-32 rep=8 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.352 s, 8.44 GCUPS
+cell=scan-x86_64_v3-32 rep=9 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.352 s, 8.43 GCUPS
+cell=scan-x86_64_v3-32 rep=10 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4: 78 hits in 0.351 s, 8.47 GCUPS
+cell=scan-x86_64_v3-32packed rep=verify genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.149 s, 19.99 GCUPS
+cell=scan-x86_64_v3-32packed rep=verify scalar check: 78 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 13.275 s (0.22 GCUPS)
+cell=scan-x86_64_v3-32packed rep=1 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.146 s, 20.28 GCUPS
+cell=scan-x86_64_v3-32packed rep=2 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.147 s, 20.19 GCUPS
+cell=scan-x86_64_v3-32packed rep=3 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.148 s, 20.12 GCUPS
+cell=scan-x86_64_v3-32packed rep=4 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.151 s, 19.72 GCUPS
+cell=scan-x86_64_v3-32packed rep=5 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.146 s, 20.35 GCUPS
+cell=scan-x86_64_v3-32packed rep=6 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.147 s, 20.20 GCUPS
+cell=scan-x86_64_v3-32packed rep=7 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.146 s, 20.34 GCUPS
+cell=scan-x86_64_v3-32packed rep=8 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.148 s, 20.05 GCUPS
+cell=scan-x86_64_v3-32packed rep=9 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.146 s, 20.33 GCUPS
+cell=scan-x86_64_v3-32packed rep=10 genome 4641652 bp, 32 guides x 20 nt, K=4, lanes=4 packed: 78 hits in 0.150 s, 19.83 GCUPS
+cell=scan-x86_64_v3-48 rep=verify genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.526 s, 8.48 GCUPS
+cell=scan-x86_64_v3-48 rep=verify scalar check: 128 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 19.804 s (0.22 GCUPS)
+cell=scan-x86_64_v3-48 rep=1 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.573 s, 7.78 GCUPS
+cell=scan-x86_64_v3-48 rep=2 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.531 s, 8.39 GCUPS
+cell=scan-x86_64_v3-48 rep=3 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.530 s, 8.41 GCUPS
+cell=scan-x86_64_v3-48 rep=4 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.532 s, 8.38 GCUPS
+cell=scan-x86_64_v3-48 rep=5 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.531 s, 8.40 GCUPS
+cell=scan-x86_64_v3-48 rep=6 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.531 s, 8.40 GCUPS
+cell=scan-x86_64_v3-48 rep=7 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.534 s, 8.34 GCUPS
+cell=scan-x86_64_v3-48 rep=8 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.535 s, 8.33 GCUPS
+cell=scan-x86_64_v3-48 rep=9 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.534 s, 8.35 GCUPS
+cell=scan-x86_64_v3-48 rep=10 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4: 128 hits in 0.529 s, 8.42 GCUPS
+cell=scan-x86_64_v3-48packed rep=verify genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.197 s, 22.67 GCUPS
+cell=scan-x86_64_v3-48packed rep=verify scalar check: 128 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 19.667 s (0.23 GCUPS)
+cell=scan-x86_64_v3-48packed rep=1 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.195 s, 22.85 GCUPS
+cell=scan-x86_64_v3-48packed rep=2 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.196 s, 22.73 GCUPS
+cell=scan-x86_64_v3-48packed rep=3 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.195 s, 22.82 GCUPS
+cell=scan-x86_64_v3-48packed rep=4 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.199 s, 22.35 GCUPS
+cell=scan-x86_64_v3-48packed rep=5 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.195 s, 22.84 GCUPS
+cell=scan-x86_64_v3-48packed rep=6 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.199 s, 22.44 GCUPS
+cell=scan-x86_64_v3-48packed rep=7 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.195 s, 22.88 GCUPS
+cell=scan-x86_64_v3-48packed rep=8 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.194 s, 22.98 GCUPS
+cell=scan-x86_64_v3-48packed rep=9 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.199 s, 22.41 GCUPS
+cell=scan-x86_64_v3-48packed rep=10 genome 4641652 bp, 48 guides x 20 nt, K=4, lanes=4 packed: 128 hits in 0.196 s, 22.69 GCUPS
+cell=scan-x86_64_v3-96 rep=verify genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.059 s, 8.42 GCUPS
+cell=scan-x86_64_v3-96 rep=verify scalar check: 306 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 39.428 s (0.23 GCUPS)
+cell=scan-x86_64_v3-96 rep=1 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.094 s, 8.15 GCUPS
+cell=scan-x86_64_v3-96 rep=2 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.068 s, 8.34 GCUPS
+cell=scan-x86_64_v3-96 rep=3 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.063 s, 8.39 GCUPS
+cell=scan-x86_64_v3-96 rep=4 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.083 s, 8.23 GCUPS
+cell=scan-x86_64_v3-96 rep=5 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.077 s, 8.27 GCUPS
+cell=scan-x86_64_v3-96 rep=6 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.065 s, 8.36 GCUPS
+cell=scan-x86_64_v3-96 rep=7 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.062 s, 8.39 GCUPS
+cell=scan-x86_64_v3-96 rep=8 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.066 s, 8.36 GCUPS
+cell=scan-x86_64_v3-96 rep=9 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.061 s, 8.40 GCUPS
+cell=scan-x86_64_v3-96 rep=10 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4: 306 hits in 1.057 s, 8.43 GCUPS
+cell=scan-x86_64_v3-96packed rep=verify genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.391 s, 22.78 GCUPS
+cell=scan-x86_64_v3-96packed rep=verify scalar check: 306 hits expected, 0 guides disagree, hit sets (guide, end, cost) identical: true; scalar DP took 39.754 s (0.22 GCUPS)
+cell=scan-x86_64_v3-96packed rep=1 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.391 s, 22.77 GCUPS
+cell=scan-x86_64_v3-96packed rep=2 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.393 s, 22.70 GCUPS
+cell=scan-x86_64_v3-96packed rep=3 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.395 s, 22.57 GCUPS
+cell=scan-x86_64_v3-96packed rep=4 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.398 s, 22.38 GCUPS
+cell=scan-x86_64_v3-96packed rep=5 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.392 s, 22.71 GCUPS
+cell=scan-x86_64_v3-96packed rep=6 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.392 s, 22.73 GCUPS
+cell=scan-x86_64_v3-96packed rep=7 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.393 s, 22.68 GCUPS
+cell=scan-x86_64_v3-96packed rep=8 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.389 s, 22.90 GCUPS
+cell=scan-x86_64_v3-96packed rep=9 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.390 s, 22.85 GCUPS
+cell=scan-x86_64_v3-96packed rep=10 genome 4641652 bp, 96 guides x 20 nt, K=4, lanes=4 packed: 306 hits in 0.392 s, 22.71 GCUPS

@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below. The paper that describes
+  it is in preparation; this file will name it once it is public.
+type: software
+title: "bitdp: bit-parallel kernels for weighted linear-gap alignment, derived at compile time"
+abstract: >-
+  A Zig library that derives bit-parallel alignment kernels at compile time
+  from a linear-gap scoring scheme, with the tests, benchmark harness and
+  session logs behind the paper's numbers.
+authors:
+  - family-names: Tack
+    given-names: James
+    orcid: "https://orcid.org/0009-0007-5366-3544"
+repository-code: "https://github.com/endlessconflict/bitdp"
+url: "https://github.com/endlessconflict/bitdp"
+license: MIT
+version: 0.2.0-paper
+keywords:
+  - sequence alignment
+  - bit-parallel dynamic programming
+  - edit distance
+  - SIMD
+  - compile-time code generation
+  - Zig

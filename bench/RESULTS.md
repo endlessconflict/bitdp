@@ -1,6 +1,6 @@
 # Results
 
-Every throughput number comes from the measurement session of `bench/reproduce.sh` of 2026-10-23 (`raw/r2/`): `raw/r2/summary.csv` gives, per cell and tool, the median, quartiles and range of ten runs, and the paired ratio of every two tools of a cell; the paper's Tables 2 and 3 print them through `paper/generated/numbers.tex`, and `bench/README.md` describes the harness. The sessions of 2026-09-28 to 2026-10-12 that this file reported before (three runs per cell, measured by hand, the Ubuntu packages of edlib and parasail, BGSA's AVX2 builds with `-march=native`) are superseded; their logs stay in `raw/`, and their tables are in this file at commit 39cfd5b. `raw/r2/env.txt` records commit a8ddbc4, the commit of the unpublished paper branch on which the session ran. Its `src/` and `bench/` trees are those of the published commit ac80e44: `git rev-parse ac80e44:src ac80e44:bench` prints 763b35b1408b9d38f64a752908204c63674e3419 and ca81f48a020553264bcda882bfe8710faceaa1dd, the tree hashes that a8ddbc4 has.
+Every throughput number comes from the measurement session of `bench/reproduce.sh` of 2026-11-10 (`raw/r2/`): `raw/r2/summary.csv` gives, per cell and tool, the median, quartiles and range of ten runs, and the paired ratio of every two tools of a cell (`summary-bestperf.csv`: the cells of steps `t4`, `t5` and `t6` again, five runs in the second power mode); the paper's Tables 2 and 3 print them through `paper/generated/numbers.tex`, and `bench/README.md` describes the harness. The session of 2026-10-23, measured at commit ac80e44, is superseded and kept in `raw/session-2026-10-23/`: it timed some tools around each pair and others around a whole set, and its shortest timed region was 0.02 s. The sessions of 2026-09-28 to 2026-10-12 that this file reported before (three runs per cell, measured by hand, the Ubuntu packages of edlib and parasail, BGSA's AVX2 builds with `-march=native`) are superseded; their logs stay in `raw/`, and their tables are in this file at commit 39cfd5b. `raw/r2/env.txt` records commit 1575ba7, the commit of the unpublished paper branch on which the session ran, and the hashes of its `src/` and `bench/` trees. The `src/` tree is that of the published commit eba1660: `git rev-parse eba1660:src` prints 09801db90058607ea25d351fea8a9244948d13ad. The recorded `bench/` hash, ad4f55c12b99f7eaa2e8cc800d53d5cba61ed1d1, is that of the tree before the machine's host name was replaced by `<host>` in the `uname` line of `raw/r2/env.txt` and `raw/session-2026-10-23/env.txt` on 2026-11-11, before publication (each file ends with a note that says so); the `bench/` tree of eba1660 differs from the recorded one only in that line and the note of `raw/session-2026-10-23/env.txt`.
 
 ## Genome scan (search mode)
 
@@ -41,6 +41,25 @@ Word operations per column with parts of the compiler switched off (`zig build a
 | bitpal (4,-7,-11) | 509 | 1176 | 509 | 1176 |
 | tstv | 51 | 73 | 51 | 73 |
 | blosum62, gap 4 | 799 | 1742 | 799 | 1742 |
+
+## Bergeron and Hamel's algorithm on the same back end
+
+`Options.bh_only` makes the compiler emit Bergeron and Hamel's vector algorithm with every integer vector held as bit planes and added by ripple carry; the same kernels run it (`bitdp-bench bh-edit`, `bh-bitpal`, `bh-tstv`, `bh-blosum`). Word operations per column (`raw/r2/ablation.txt`): the derived program, their algorithm as compiled (shared subexpressions, constant planes folded, without the factor not K in N), and their listing with every printed operation emitted on bit planes.
+
+| Scheme | derived | B&H compiled | B&H listing on bit planes |
+|---|---|---|---|
+| edit (0,1,1) | 14 | 45 | 52 |
+| indel (0,2,1) | 6 | 48 | 52 |
+| (0,1,2) | 28 | 115 | 129 |
+| (0,3,2) | 57 | 118 | 129 |
+| bitpal (2,-3,-5) | 181 | 393 | 414 |
+| bitpal (3,-4,-6) | 253 | 588 | 615 |
+| bitpal (4,-5,-9) | 399 | 798 | 831 |
+| bitpal (4,-7,-11) | 509 | 934 | 971 |
+| tstv | 51 | 118 | 129 |
+| blosum62, gap 4 | 799 | 732 | 760 |
+
+In the all-against-all setting the derived kernels run 1.86 to 3.12 times as fast as the compiled Bergeron-Hamel programs (unit costs, BitPAl's (2, -3, -5) weights and transition/transversion costs, 100 bp to 3 kbp, both register widths), and 1.16 to 2.76 times as fast on the independent DNA pairs of 150 bp and 1 kbp. On BLOSUM62, the one scheme where their program is shorter, it is the faster one in batches (1.17 times the derived kernel's rate with AVX2, 1.13 with AVX-512) and the slower one for one pair at a time. Rates and ratios: `raw/r2/summary.csv`, tools `bitdp-bh-*`.
 
 ## Schemes
 

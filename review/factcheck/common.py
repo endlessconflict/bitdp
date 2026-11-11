@@ -59,7 +59,7 @@ def table_rows(tex, label):
     for line in body.split("\\\\"):
         line = line.strip()
         if line:
-            rows.append([c.strip() for c in line.split("&")])
+            rows.append([c.strip() for c in re.split(r"(?<!\\)&", line)])
     return rows
 
 

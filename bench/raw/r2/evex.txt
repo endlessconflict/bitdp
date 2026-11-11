@@ -1,0 +1,6 @@
+bitdp-bench-x86_64_v3 evex=0
+bitdp-scan-x86_64_v3 evex=0
+seqan_avx2 evex=0
+bgsa-myers-avx2 evex=0
+bgsa-bitpal-packed-avx2 evex=0
+bgsa-bitpal-nonpacked-avx2 evex=0
