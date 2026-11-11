@@ -34,7 +34,10 @@ static int run(char const *scheme, std::vector<std::string> const &ps, std::vect
     ExecutionPolicy<Serial, Vectorial> exec;
     auto t0 = std::chrono::steady_clock::now();
     auto scores = globalAlignmentScore(exec, setH, setV, sc);
-    double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    auto since = [&] { return std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count(); };
+    long long rounds = 1; // the whole call, repeated until the minimum region of pairhash.h
+    double sec, min_sec = bench_min_seconds();
+    for (; (sec = since()) < min_sec; rounds++) scores = globalAlignmentScore(exec, setH, setV, sc);
     pairhash ph;
     pairhash_init(&ph);
     long long total = 0;
@@ -47,8 +50,8 @@ static int run(char const *scheme, std::vector<std::string> const &ps, std::vect
 #else
     char const *mode = "novec";
 #endif
-    std::printf("seqan-%s%d %s pairs=%zu cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", mode, width, scheme,
-                (size_t)length(scores), total, pairhash_end(&ph), sec, cells / sec * 1e-9);
+    std::printf("seqan-%s%d %s pairs=%zu cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f rounds=%lld\n", mode, width, scheme,
+                (size_t)length(scores), total, pairhash_end(&ph), sec, cells * rounds / sec * 1e-9, rounds);
     return 0;
 }
 

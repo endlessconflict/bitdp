@@ -24,6 +24,9 @@ const configs = [_]struct { []const u8, bitdp.Options }{
     .{ "no merge networks", .{ .merge = false } },
     .{ "no truth tables", .{ .truth_table = false } },
     .{ "direct only", .{ .truth_table = false, .merge = false } },
+    // Bergeron and Hamel's algorithm on bit planes, compiled by the same back end.
+    .{ "B&H planes", bitdp.Options.bh_only },
+    .{ "best of both", bitdp.Options.best_of_both },
 };
 
 /// Scaling sweep, -Dscheme=100+i: costs (0, 1, g) keep the chained block
@@ -43,8 +46,8 @@ const sweep = blk: {
 fn opMix(plan: bitdp.Plan) [@typeInfo(bitdp.Op).@"enum".fields.len]u32 {
     @setEvalBranchQuota(1 << 20);
     var live = [_]bool{false} ** plan.nodes.len;
-    for (plan.out_v[0 .. plan.k - 1]) |o| live[o] = true;
-    for (plan.out_u[0 .. plan.k - 1]) |o| live[o] = true;
+    for (plan.out_v[0..plan.nstate]) |o| live[o] = true;
+    for (plan.out_u[0..plan.nstate]) |o| live[o] = true;
     var mix = [_]u32{0} ** @typeInfo(bitdp.Op).@"enum".fields.len;
     var i: usize = plan.len;
     while (i > 0) {
@@ -68,7 +71,8 @@ pub fn main() void {
     if (options.scheme >= 100) {
         const entry = sweep[if (options.scheme >= 100) options.scheme - 100 else 0];
         const plan = comptime bitdp.derive(entry[1]);
-        std.debug.print("{s}: k={d} chains={d} ops={d}\n", .{ entry[0], plan.k, plan.chains, plan.cost });
+        const bh = comptime bitdp.deriveWith(entry[1], bitdp.Options.bh_only);
+        std.debug.print("{s}: k={d} chains={d} ops={d} bh={d}\n", .{ entry[0], plan.k, plan.chains, plan.cost, bh.cost });
         return;
     }
     const entry = list[if (options.scheme >= 100) 0 else options.scheme];
@@ -80,11 +84,12 @@ pub fn main() void {
     std.debug.print("\n{s}:", .{entry[0]});
     inline for (configs) |c| {
         const opt = c[1];
-        const usable = opt.direct or opt.merge or opt.truth_table;
+        const usable = opt.direct or opt.merge or opt.truth_table or opt.bh;
         if (usable) {
             const plan = comptime bitdp.deriveWith(entry[1], opt);
             std.debug.print("  {s}={d}", .{ c[0], plan.cost });
         }
     }
-    std.debug.print("\n", .{});
+    // Their listing, every printed operation executed (the count review/factcheck/bh.py reports).
+    std.debug.print("  B&H listing={d}\n", .{comptime bitdp.bhListing(entry[1]).cost});
 }

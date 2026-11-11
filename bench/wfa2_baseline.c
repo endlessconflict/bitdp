@@ -38,37 +38,24 @@ int main(int argc, char **argv) {
     }
     wavefront_aligner_t *wf = wavefront_aligner_new(&attr);
 
-    FILE *f = fopen(argv[2], "rb");
-    if (!f) return 1;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = malloc(size + 1);
-    if (fread(buf, 1, size, f) != (size_t)size) return 1;
-    buf[size] = 0;
-    fclose(f);
-
-    long long total = 0, cells = 0, pairs = 0;
-    double busy = 0;
+    pairset in = pairs_load(argv[2]);
+    if (!in.p) return 1;
+    long long *cost = malloc((in.count + 1) * sizeof *cost);
+    long long total = 0, rounds = 0;
+    double sec, min_sec = bench_min_seconds(), t0 = now();
+    do {
+        for (long long i = 0; i < in.count; i++) {
+            wavefront_align(wf, in.p[i], in.m[i], in.t[i], in.n[i]);
+            // WFA2 reports the edit metric as the distance and gap-linear as the negated penalty
+            cost[i] = attr.distance_metric == edit ? wf->cigar->score : -(long long)wf->cigar->score;
+        }
+        rounds++;
+    } while ((sec = now() - t0) < min_sec);
     pairhash ph;
     pairhash_init(&ph);
-    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
-        char *tab = strchr(line, '\t');
-        if (!tab) continue;
-        *tab = 0;
-        int m = strlen(line), n = strlen(tab + 1);
-        double t0 = now();
-        wavefront_align(wf, line, m, tab + 1, n);
-        busy += now() - t0;
-        // WFA2 reports the edit metric as the distance and gap-linear as the negated penalty
-        long long c = attr.distance_metric == edit ? wf->cigar->score : -(long long)wf->cigar->score;
-        total += c;
-        pairhash_add(&ph, c);
-        cells += (long long)m * n;
-        pairs++;
-    }
-    printf("wfa2 %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", argv[1], pairs, total,
-           pairhash_end(&ph), busy, cells / busy * 1e-9);
+    for (long long i = 0; i < in.count; i++) total += cost[i], pairhash_add(&ph, cost[i]);
+    printf("wfa2 %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f rounds=%lld\n", argv[1], in.count, total,
+           pairhash_end(&ph), sec, in.cells * rounds / sec * 1e-9, rounds);
     wavefront_aligner_delete(wf);
     return 0;
 }

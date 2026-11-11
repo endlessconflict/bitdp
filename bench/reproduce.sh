@@ -4,15 +4,23 @@
 # cost of every pair with an independent scalar DP (dp_check.c), runs every cell REPS times in
 # round-robin order across its tools (the start rotates by one tool per repetition) after one discarded
 # warm-up run per tool, pinned to one core, and checks every run pair by pair against the reference
-# (per-pair cost hash, pairhash.h); on a mismatch it reports the first differing pair and stops. Raw
-# logs go to bench/raw/r2/, the summary to bench/raw/r2/summary.csv (bench/summary.py).
+# (per-pair cost hash, pairhash.h); on a mismatch it reports the first differing pair and stops. Every
+# driver times the whole loop over its input and repeats it until BENCH_MIN_SECONDS (0.25) have passed
+# (pairhash.h, bench.zig); BGSA reports its own rate, so the all-against-all inputs are sized for it. Raw
+# logs go to bench/raw/r2/, the summary to bench/raw/r2/summary.csv (bench/summary.py). The session of
+# 2026-10-23 (two lengths in Table 2, one read set) is kept in bench/raw/session-2026-10-23/.
+# Steps and the paper: ops = Tables 1, 4 and 5 and Fig. 2; t4 = Table 2; t5 and t6 = Table 3; long, scan,
+# compile and insn = the text of Section 4 and Appendix C. Tools named bitdp-bh-* run the same kernels on
+# Bergeron and Hamel's algorithm (scheme names with the prefix "bh-" of bench.zig).
 # Runs in WSL2 (Ubuntu). Windows side: bench/powermode.ps1 sets the power mode "Best power efficiency"
 # for the measurement steps, samples the processor performance once per second, and restores the mode
-# found at the start; step "robust" re-runs Table 4 in "Best performance"; step "compile" times one
-# derivation with Zig in WSL and, through WSL interop, with the Windows Zig (ZIG_WIN, else zig.exe on PATH).
+# found at the start; step "robust" re-runs Tables 2 and 3 (t4, t5, t6) in "Best performance"; step
+# "compile" times one derivation with Zig in WSL and, through WSL interop, with the Windows Zig (ZIG_WIN,
+# else zig.exe on PATH). Outside WSL (no wslpath or powershell.exe) the power mode is left alone and the
+# logs say so.
 #
 # usage: bench/reproduce.sh [--dry-run] [--quick] [STEP ...]
-#   steps (default: all, in this order): deps build ops env inputs ref t4 t5 t6 long scan compile robust insn summary
+#   steps (default: all, in this order; "summary" needs the logs of scan and compile): deps build ops env inputs ref t4 t5 t6 long scan compile robust insn pcheck summary
 #   --dry-run  print every command instead of running it
 #   --quick    tiny inputs, 2 repetitions, output under $WORK-quick: a test of the harness, not a measurement
 # environment: DEPS ($HOME/bitdp-deps), WORK ($HOME/bitdp-r2), REPS (10), CORE (2), RREPS (5, step robust),
@@ -29,13 +37,19 @@ DRY=0 QUICK=0 STEPS=()
 for a in "$@"; do
     case $a in --dry-run) DRY=1 ;; --quick) QUICK=1 ;; *) STEPS+=("$a") ;; esac
 done
-[ ${#STEPS[@]} -gt 0 ] || STEPS=(deps build ops env inputs ref t4 t5 t6 long scan compile robust insn summary)
+[ ${#STEPS[@]} -gt 0 ] || STEPS=(deps build ops env inputs ref t4 t5 t6 long scan compile robust insn pcheck summary)
 RAW="$R/bench/raw/r2" GEN="$R/paper/generated"
 if [ $QUICK = 1 ]; then WORK=$WORK-quick REPS=2 RREPS=2 CREPS=1 RAW=$WORK/raw GEN=$WORK/generated; fi
 B=$WORK/bin IN=$WORK/in S=$WORK/src LOG=runs.txt
 ZIG=$DEPS/zig/zig
-PMW=$(wslpath -w "$R/bench/powermode.ps1")
-pm() { powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PMW" "$@" | tr -d '\r'; }
+HAVE_PM=0
+if command -v wslpath > /dev/null && command -v powershell.exe > /dev/null; then
+    HAVE_PM=1 PMW=$(wslpath -w "$R/bench/powermode.ps1")
+fi
+pm() {
+    if [ $HAVE_PM = 0 ]; then echo "power mode: not WSL, skipped ($*)"; return; fi
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$PMW" "$@" | tr -d '\r'
+}
 x() { # print a command, run it unless --dry-run
     echo "+ $*"
     [ $DRY = 1 ] || eval "$@"
@@ -70,6 +84,7 @@ build() {
         x "cp $WORK/zig-$cpu/bin/bitdp-bench $B/bitdp-bench-$cpu && cp $WORK/zig-$cpu/bin/bitdp-scan $B/bitdp-scan-$cpu"
     done
     x "gcc -O3 -march=native $S/dp_check.c -o $B/dp_check $PI $PL -lm"
+    x "gcc -O3 -march=native $S/parasail_check.c -o $B/parasail_check $PI $PL -lm"
     x "gcc -O3 -march=native $S/baselines.c -o $B/baselines $PI -I$DEPS/edlib/edlib/include $DEPS/edlib/edlib.o $PL -lstdc++ -lm"
     x "gcc -O3 -march=native $S/ksw2_baseline.c $DEPS/ksw2/ksw2_extz2_sse.c $DEPS/ksw2/kalloc.c -I$DEPS/ksw2 -o $B/ksw2_baseline"
     x "gcc -O3 -march=native $S/wfa2_baseline.c -I$DEPS/WFA2-lib -o $B/wfa2_baseline $DEPS/WFA2-lib/lib/libwfa.a -lm -fopenmp"
@@ -87,8 +102,8 @@ build() {
     done
 }
 
-# ---- ops: operation counts (deterministic, not timed): Table 1 and Fig. 2 from `zig build mve`, Tables 2-3 and
-# Fig. 3 from `zig build ablation` (schemes 0-9: ablation, 100-123: scaling sweep)
+# ---- ops: operation counts (deterministic, not timed): Table 1 and Fig. 2 from `zig build mve`, Tables 4 and 5
+# from `zig build ablation` (schemes 0-9: ablation, 100-123: scaling sweep; both builders' counts per scheme)
 ops() {
     local schemes="$(seq 0 9) $(seq 100 123)"
     [ $QUICK = 0 ] || schemes="0 100"
@@ -101,8 +116,8 @@ ops() {
 
 # ---- env: machine, toolchain and repository state
 env_log() {
-    x "{ date -Iseconds; git -C '$R' rev-parse HEAD; git -C '$R' status --short | head -20; uname -a; grep PRETTY /etc/os-release;
-        lscpu | grep -E 'Model name|^CPU\\(s\\)|Thread|MHz|Flags' | cut -c1-300; free -h | head -2; gcc --version | head -1;
+    x "{ date -Iseconds; git -C '$R' rev-parse HEAD HEAD:src HEAD:bench; git -C '$R' status --short | head -20; uname -a; grep PRETTY /etc/os-release;
+        lscpu | grep -E 'Model name|^CPU\\(s\\)|Thread|MHz|Flags'; free -h | head -2; gcc --version | head -1;
         g++ --version | head -1; java -version 2>&1 | head -1; python3 --version; $ZIG version; bwa 2>&1 | grep Version;
         samtools --version | head -1; cat '$DEPS/versions.txt'; pm get; } > '$RAW/env.txt' 2>&1 || true"
 }
@@ -113,27 +128,36 @@ inputs() {
     if [ $QUICK = 1 ]; then
         nreads=2000
         x "cd $IN && $G ava q150.txt s150.txt 4 50 150 4 && $G ava q1000.txt s1000.txt 2 20 1000 5"
+        x "cd $IN && $G ava q100.txt s100.txt 4 50 100 11 && $G ava q300.txt s300.txt 4 20 300 12 && $G ava q3000.txt s3000.txt 2 16 3000 13"
         x "cd $IN && $G dna150.tsv 500 150 0.10 dna 1 && $G dna1000.tsv 50 1000 0.15 dna 2 && $G prot300.tsv 50 300 0.30 protein 3"
         x "cd $IN && $G dna10k5.tsv 4 10000 0.05 dna 6 && $G dna10k15.tsv 4 10000 0.15 dna 7 && $G dna100k5.tsv 1 30000 0.05 dna 8"
     else
-        x "cd $IN && $G ava q150.txt s150.txt 64 12500 150 4 && $G ava q1000.txt s1000.txt 16 1250 1000 5"
+        # all against all: at least 4e10 cells per set, so BGSA's own timed region stays above 0.2 s at 200 GCUPS
+        x "cd $IN && $G ava q150.txt s150.txt 64 31250 150 4 && $G ava q1000.txt s1000.txt 16 2500 1000 5"
+        x "cd $IN && $G ava q100.txt s100.txt 64 62500 100 11 && $G ava q300.txt s300.txt 64 7500 300 12 && $G ava q3000.txt s3000.txt 16 288 3000 13"
         x "cd $IN && $G dna150.tsv 100000 150 0.10 dna 1 && $G dna1000.tsv 5000 1000 0.15 dna 2 && $G prot300.tsv 10000 300 0.30 protein 3"
         x "cd $IN && $G dna10k5.tsv 128 10000 0.05 dna 6 && $G dna10k15.tsv 128 10000 0.15 dna 7 && $G dna100k5.tsv 8 100000 0.05 dna 8"
     fi
     x "cd $IN && curl -sSf 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=NC_000913.3&rettype=fasta&retmode=text' > ref.fa"
-    x "cd $IN && { curl -sS https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR022/ERR022075/ERR022075_1.fastq.gz | gunzip -c | head -n $((4 * nreads)) > r1.fq || true; }"
+    x "cd $IN && { curl -sSf --retry 5 https://ftp.sra.ebi.ac.uk/vol1/fastq/ERR022/ERR022075/ERR022075_1.fastq.gz | gunzip -c | head -n $((4 * nreads)) > r1.fq || true; }"
     x "cd $IN && bwa index ref.fa 2> bwa-index.log && bwa mem -t 8 -K 10000000 ref.fa r1.fq 2> bwa-mem.log | samtools view -F 0x904 - | python3 -I $S/reads.py ref.fa > reads.tsv 2> reads.log"
-    x "cd $IN && sha256sum *.tsv q*.txt s*.txt ref.fa r1.fq > '$RAW/inputs.sha256' && cat reads.log >> '$RAW/inputs.sha256'"
+    # second read set: SRR24878810 (NextSeq 2000, 2 x 150 bp, the same strain), same steps
+    x "cd $IN && { curl -sSf --retry 5 https://ftp.sra.ebi.ac.uk/vol1/fastq/SRR248/010/SRR24878810/SRR24878810_1.fastq.gz | gunzip -c | head -n $((4 * nreads)) > r150.fq || true; }"
+    x "cd $IN && bwa mem -t 8 -K 10000000 ref.fa r150.fq 2> bwa-mem150.log | samtools view -F 0x904 - | python3 -I $S/reads.py ref.fa > reads150.tsv 2> reads150.log"
+    x "cd $IN && test -s reads.tsv && test -s reads150.tsv" # a failed download leaves an empty set
+    x "cd $IN && sha256sum *.tsv q*.txt s*.txt ref.fa r1.fq r150.fq > '$RAW/inputs.sha256' && cat reads.log reads150.log >> '$RAW/inputs.sha256'"
+    x "cd $IN && python3 -I $S/readstats.py reads.tsv reads150.tsv >> '$RAW/inputs.sha256'"
 }
 
 # ---- ref: reference costs (sum, hash and per-pair dump) for every input and scheme a cell uses
 ref() {
     x ": > '$RAW/ref.txt'"
     for key in edit:dna150.tsv bitpal:dna150.tsv tstv:dna150.tsv edit:dna1000.tsv bitpal:dna1000.tsv tstv:dna1000.tsv \
-        blosum:prot300.tsv edit:reads.tsv bitpal:reads.tsv tstv:reads.tsv edit:dna10k5.tsv edit:dna10k15.tsv edit:dna100k5.tsv; do
+        blosum:prot300.tsv edit:reads.tsv bitpal:reads.tsv tstv:reads.tsv edit:reads150.tsv bitpal:reads150.tsv tstv:reads150.tsv \
+        edit:dna10k5.tsv edit:dna10k15.tsv edit:dna100k5.tsv; do
         x "cd $IN && BENCH_DUMP=ref-${key%%:*}-${key#*:}.txt $B/dp_check ${key%%:*} ${key#*:} | sed 's/^/key=$key /' >> '$RAW/ref.txt'"
     done
-    for s in edit bitpal tstv; do for n in 150 1000; do
+    for s in edit bitpal tstv; do for n in $T4N; do
         x "cd $IN && BENCH_DUMP=ref-$s-ava$n.txt $B/dp_check $s ava q$n.txt s$n.txt | sed 's/^/key=$s:ava$n /' >> '$RAW/ref.txt'"
     done; done
 }
@@ -172,14 +196,18 @@ bgsa_cmd() { # VARIANT {distance|score} LENGTH
     echo "$B/bgsa-$1 -q q$3.txt -d s$3.txt -f bgsa-$1.bin -N 1 > bgsa-$1.log && python3 -I $S/bgsa_check.py bgsa-$1 $2 bgsa-$1.bin q$3.txt s$3.txt bgsa-$1.log"
 }
 
-t4() { # all against all, BGSA's setting
-    for n in 150 1000; do
+T4N="100 150 300 1000 3000" # lengths of the all-against-all setting (inputs: seeds 11, 4, 12, 5, 13)
+t4() { # Table 2: all against all, BGSA's setting
+    for n in $T4N; do
         cell t4-edit-$n edit:ava$n "bgsa-myers-avx2=$(bgsa_cmd myers-avx2 distance $n)" "bitdp-avx2=$bd2 edit ava q$n.txt s$n.txt" \
-            "bgsa-myers-avx512=$(bgsa_cmd myers-avx512 distance $n)" "bitdp-avx512=$bd512 edit ava q$n.txt s$n.txt"
+            "bgsa-myers-avx512=$(bgsa_cmd myers-avx512 distance $n)" "bitdp-avx512=$bd512 edit ava q$n.txt s$n.txt" \
+            "bitdp-bh-avx2=$bd2 bh-edit ava q$n.txt s$n.txt" "bitdp-bh-avx512=$bd512 bh-edit ava q$n.txt s$n.txt"
         cell t4-bitpal-$n bitpal:ava$n "bgsa-bitpal-packed-avx2=$(bgsa_cmd bitpal-packed-avx2 score $n)" \
             "bgsa-bitpal-nonpacked-avx2=$(bgsa_cmd bitpal-nonpacked-avx2 score $n)" "bitdp-avx2=$bd2 bitpal ava q$n.txt s$n.txt" \
-            "bgsa-bitpal-packed-avx512=$(bgsa_cmd bitpal-packed-avx512 score $n)" "bitdp-avx512=$bd512 bitpal ava q$n.txt s$n.txt"
-        cell t4-tstv-$n tstv:ava$n "bitdp-avx2=$bd2 tstv ava q$n.txt s$n.txt" "bitdp-avx512=$bd512 tstv ava q$n.txt s$n.txt"
+            "bgsa-bitpal-packed-avx512=$(bgsa_cmd bitpal-packed-avx512 score $n)" "bitdp-avx512=$bd512 bitpal ava q$n.txt s$n.txt" \
+            "bitdp-bh-avx2=$bd2 bh-bitpal ava q$n.txt s$n.txt" "bitdp-bh-avx512=$bd512 bh-bitpal ava q$n.txt s$n.txt"
+        cell t4-tstv-$n tstv:ava$n "bitdp-avx2=$bd2 tstv ava q$n.txt s$n.txt" "bitdp-avx512=$bd512 tstv ava q$n.txt s$n.txt" \
+            "bitdp-bh-avx2=$bd2 bh-tstv ava q$n.txt s$n.txt" "bitdp-bh-avx512=$bd512 bh-tstv ava q$n.txt s$n.txt"
     done
 }
 
@@ -195,19 +223,43 @@ pairs_cell() { # ID SCHEME FILE [EXTRA TOOLS]: the tools that run on independent
     cell $id $s:$f "${t[@]}" "$@"
 }
 
-t5() { # independent pairs; parasail's diag16 and striped16 as before (striped16 is wrong for linear gaps)
+para() { # SCHEME FILE: parasail's other two 16-bit kernels (striped16 is wrong for linear gaps: marked, not fatal)
+    echo "parasail-diag16=$B/baselines diag16 $1 $2"
+    echo "!parasail-striped16=$B/baselines striped16 $1 $2"
+}
+bh() { # SCHEME FILE: Bergeron and Hamel's algorithm on bitdp's three kernels
+    echo "bitdp-bh-1pair=$bd512 bh-$1 $2"
+    echo "bitdp-bh-avx2=$bd2 bh-$1 $2 batch"
+    echo "bitdp-bh-avx512=$bd512 bh-$1 $2 batch"
+}
+t5() { # Table 3, generated pairs
+    local extra
     for s in edit bitpal tstv; do for f in dna150.tsv dna1000.tsv; do
-        pairs_cell t5-$s-${f%.tsv} $s $f "parasail-diag16=$B/baselines diag16 $s $f" "!parasail-striped16=$B/baselines striped16 $s $f"
+        mapfile -t extra < <(para $s $f; bh $s $f)
+        pairs_cell t5-$s-${f%.tsv} $s $f "${extra[@]}"
     done; done
-    pairs_cell t5-blosum-prot300 blosum prot300.tsv "parasail-diag16=$B/baselines diag16 blosum prot300.tsv" \
-        "!parasail-striped16=$B/baselines striped16 blosum prot300.tsv"
+    mapfile -t extra < <(para blosum prot300.tsv; bh blosum prot300.tsv)
+    pairs_cell t5-blosum-prot300 blosum prot300.tsv "${extra[@]}"
 }
 
-t6() { for s in edit bitpal tstv; do pairs_cell t6-$s $s reads.tsv; done; }
+t6() { # Table 3, real reads: ERR022075 (100 bp) and SRR24878810 (150 bp)
+    local extra
+    for s in edit bitpal tstv; do
+        mapfile -t extra < <(para $s reads.tsv)
+        pairs_cell t6-$s $s reads.tsv "${extra[@]}"
+    done
+    for s in edit bitpal tstv; do
+        mapfile -t extra < <(para $s reads150.tsv)
+        pairs_cell t6b-$s $s reads150.tsv "${extra[@]}"
+    done
+}
 
 long() { # long pairs, unit costs; at 100 kbp bitdp and the tools that are not quadratic per pair
-    pairs_cell long-edit-10k5 edit dna10k5.tsv
-    pairs_cell long-edit-10k15 edit dna10k15.tsv
+    local extra
+    for f in dna10k5.tsv dna10k15.tsv; do
+        mapfile -t extra < <(para edit $f)
+        pairs_cell long-edit-${f%.tsv} edit $f "${extra[@]}"
+    done
     local f=dna100k5.tsv
     cell long-edit-100k5 edit:$f "bitdp-1pair=$bd512 edit $f" "bitdp-avx2=$bd2 edit $f batch" "bitdp-avx512=$bd512 edit $f batch" \
         "edlib=$B/baselines edlib edit $f" "wfa2=$B/wfa2_baseline edit $f" "astarpa2-simple=$B/astarpa2_baseline simple $f" \
@@ -261,7 +313,7 @@ EOF
 compile() { # compile cost of one derivation, Debug (mostly the derivation) and ReleaseFast (what a user builds):
     # CREPS builds per scheme, OS and mode, each with a fresh local cache, after one warm-up per OS and mode
     local zw=${ZIG_WIN:-$(command -v zig.exe || true)} wd one
-    wd=$(wslpath "$(cmd.exe /c echo %TEMP% 2> /dev/null | tr -d '\r')")/bitdp-cc
+    if [ $HAVE_PM = 1 ]; then wd=$(wslpath "$(cmd.exe /c echo %TEMP% 2> /dev/null | tr -d '\r')")/bitdp-cc; else zw=""; fi
     x "rm -rf $WORK/srczig && cp -r '$R/src' $WORK/srczig" # WSL builds read the sources from the Linux file system
     for mode in Debug ReleaseFast; do
         for s in edit ts_tv 'blosum62Linear(4)'; do
@@ -279,6 +331,7 @@ compile() { # compile cost of one derivation, Debug (mostly the derivation) and 
 
 session() { # power mode for the measurement steps; the mode found at the start is restored on exit
     if [ $DRY = 1 ]; then echo "+ powermode.ps1 set efficiency; sampler on; restore on exit"; return; fi
+    if [ $HAVE_PM = 0 ]; then echo "$(date -Iseconds) $(pm set efficiency)" >> "$RAW/power.txt"; return; fi
     local now
     now=$(pm get)
     # every table was measured on mains power; on battery Windows applies its DC settings
@@ -299,7 +352,7 @@ icount() { # CELL SCHEME CPU ARGS...: one counted run of bitdp-bench-CPU SCHEME 
     local cell=$1 s=$2 cpu=$3 lanes=8 tool=bitdp-avx512
     shift 3
     [ $cpu = znver4 ] || { lanes=4 tool=bitdp-avx2; }
-    x "cd $IN && echo \"cell=$cell-$s tool=$tool \$(python3 -I $S/wordcols.py $lanes $*) \$(taskset -c $CORE $B/perfcount $B/bitdp-bench-$cpu $s $* 2>&1 | tr '\n' ' ')\" >> '$RAW/insn.txt'"
+    x "cd $IN && echo \"cell=$cell-$s tool=$tool \$(python3 -I $S/wordcols.py $lanes $*) \$(BENCH_MIN_SECONDS=0 taskset -c $CORE $B/perfcount $B/bitdp-bench-$cpu $s $* 2>&1 | tr '\n' ' ')\" >> '$RAW/insn.txt'"
 }
 insn() {
     x "cp '$R/bench/perfcount.c' '$R/bench/wordcols.py' $S/ && gcc -O2 -Wall $S/perfcount.c -o $B/perfcount"
@@ -307,6 +360,7 @@ insn() {
     for cpu in znver4 x86_64_v3; do
         for s in edit bitpal tstv; do
             icount insn-ava1000 $s $cpu ava q1000.txt s1000.txt
+            icount insn-ava150 $s $cpu ava q150.txt s150.txt
             icount insn-dna1000 $s $cpu dna1000.tsv batch
             icount insn-dna150 $s $cpu dna150.tsv batch
         done
@@ -316,16 +370,29 @@ insn() {
     x "objdump -d $B/bitdp-bench-znver4 | grep -c -P '\tvpternlog' | sed 's/^/vpternlog instructions in the AVX-512 driver: /' >> '$RAW/insn.txt' || true"
 }
 
+# ---- pcheck: parasail's striped and scan global kernels against a plain DP, pair by pair, on the session's
+# inputs (parasail_check.c); counts of wrong pairs, not timings, so outside the session
+pcheck() {
+    x "echo \"# bench/parasail_check.c on the inputs of this session, \$(date -Iseconds)\" > '$RAW/parasail_check.txt'"
+    for key in edit:dna150.tsv bitpal:dna150.tsv tstv:dna150.tsv edit:dna1000.tsv bitpal:dna1000.tsv tstv:dna1000.tsv blosum:prot300.tsv; do
+        x "cd $IN && $B/parasail_check ${key%%:*} ${key#*:} >> '$RAW/parasail_check.txt'"
+    done
+}
+
 started=0
 for step in "${STEPS[@]}"; do
     case $step in t4 | t5 | t6 | long | scan | compile | robust) [ $started = 1 ] || { session; started=1; } ;; esac
     echo "== $step $(date -Iseconds)"
     case $step in
     deps) deps ;; build) build ;; ops) ops ;; env) env_log ;; inputs) inputs ;; ref) ref ;;
-    t4) t4 ;; t5) t5 ;; t6) t6 ;; long) long ;; scan) scan ;; compile) compile ;; insn) insn ;;
-    robust) # Table 4 in "Best performance", RREPS repetitions: a robustness check of its ratios
+    t4) t4 ;; t5) t5 ;; t6) t6 ;; long) long ;; scan) scan ;; compile) compile ;; insn) insn ;; pcheck) pcheck ;;
+    robust) # Tables 2 and 3 in "Best performance", RREPS repetitions: a robustness check of their ratios
         [ $DRY = 1 ] || echo "$(date -Iseconds) set $(pm set performance)" >> "$RAW/power.txt"
-        REPS=$RREPS LOG=runs-bestperf.txt t4
+        reps=$REPS REPS=$RREPS LOG=runs-bestperf.txt
+        t4
+        t5
+        t6
+        REPS=$reps LOG=runs.txt
         [ $DRY = 1 ] || echo "$(date -Iseconds) set $(pm set efficiency)" >> "$RAW/power.txt" ;;
     summary) # optional inputs quoted here: the repository path may hold spaces
         opt=""

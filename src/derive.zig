@@ -17,6 +17,10 @@
 //! truth-table synthesis for small difference sets, and a symbolic one that
 //! decomposes the min-plus cell into thresholds and reads most planes off
 //! unary sums computed by merging networks. Nothing is hand-derived.
+//!
+//! A further builder, off by default, emits Bergeron and Hamel's vector
+//! algorithm with its integer vectors held as bit planes (`buildBh`), into the
+//! same program representation, so both constructions run on one kernel.
 
 const std = @import("std");
 
@@ -103,6 +107,9 @@ const Prog = struct {
     nodes: [max_nodes]Node = undefined,
     len: u16 = 0,
     table: [table_size]u16 = [_]u16{empty} ** table_size,
+    /// Emit every operation as given: constants are still folded, but nothing
+    /// is shared or cancelled. Used to count a listing operation for operation.
+    raw: bool = false,
 
     fn emit(p: *Prog, n0: Node) u16 {
         var n = n0;
@@ -112,13 +119,13 @@ const Prog = struct {
         };
         if (binary and n.a > n.b) std.mem.swap(u16, &n.a, &n.b);
         if (n.op == .not) switch (p.nodes[n.a].op) {
-            .not => return p.nodes[n.a].a,
+            .not => if (!p.raw) return p.nodes[n.a].a,
             .zero => return p.emit(.{ .op = .ones }),
             .ones => return p.emit(.{ .op = .zero }),
             else => {},
         };
         if (n.op == .@"and" or n.op == .@"or") {
-            if (n.a == n.b) return n.a;
+            if (n.a == n.b and !p.raw) return n.a;
             const absorbing: Op = if (n.op == .@"and") .zero else .ones;
             const neutral: Op = if (n.op == .@"and") .ones else .zero;
             for ([2]u16{ n.a, n.b }, [2]u16{ n.b, n.a }) |x, y| {
@@ -130,7 +137,7 @@ const Prog = struct {
         var h: usize = (@as(usize, @intFromEnum(n.op)) *% 0x9e37 ^ @as(usize, n.a) *% 0x85eb ^ @as(usize, n.b) *% 0xc2b3) % table_size;
         while (p.table[h] != empty) : (h = (h + 1) % table_size) {
             const m = p.nodes[p.table[h]];
-            if (m.op == n.op and m.a == n.a and m.b == n.b) return p.table[h];
+            if (!p.raw and m.op == n.op and m.a == n.a and m.b == n.b) return p.table[h];
         }
         if (p.len == max_nodes) @compileError("bitdp: program too large");
         p.nodes[p.len] = n;
@@ -304,7 +311,24 @@ pub const Plan = struct {
     /// Substitution cost classes; kernel inputs k-1.. are [cost >= c[j]], j >= 1.
     cls: Classes,
     /// Which builder produced the plan.
-    method: enum { truth_table, direct, merge },
+    method: enum { truth_table, direct, merge, bh },
+    // What the kernel reads besides the nodes. Inputs 0..nstate-1 are the
+    // planes carried from column to column, inputs nstate..nstate+nin-1 the
+    // planes looked up per text character.
+    /// Planes of the Delta-v state (`out_v`) and of the bottom-row state (`out_u`).
+    nstate: u16,
+    /// Planes per text character.
+    nin: u16,
+    /// Stored value of state plane a in column 0, the same in every row.
+    v0: [max_vals]bool,
+    /// Change of the bottom-row score in a column: u_base plus u_w[t] for
+    /// every plane t of `out_u` whose bit is set there.
+    u_base: i32,
+    u_w: [max_vals]i32,
+    /// `bh` plans: input plane j is bit j of min(cost + in_add, in_max). The
+    /// other plans read threshold planes [cost >= cls.c[j + 1]].
+    in_add: i32,
+    in_max: i32,
 };
 
 /// Input-variable view of one truth-table row.
@@ -459,11 +483,11 @@ fn build(s: Scheme, d: Diffs, cls: Classes, in_pol: bool, cls_pol: bool) Plan {
         plan.out_v[t - 1] = synth(&p, nv, on, dc, vars[0..nv]);
     }
 
-    return finish(p, plan, d, cls, cls_pol, in_pol);
+    return finish(s, p, plan, d, cls, cls_pol, in_pol);
 }
 
 /// Fill the common Plan fields and count live word operations.
-fn finish(p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool) Plan {
+fn finish(s: Scheme, p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool) Plan {
     var plan = plan0;
     plan.vals = d.vals;
     plan.k = d.k;
@@ -472,6 +496,19 @@ fn finish(p: Prog, plan0: Plan, d: Diffs, cls: Classes, cls_pol: bool, in_pol: b
     plan.cls = cls;
     for (0..d.k - 1) |a| plan.inp_pol[a] = in_pol;
     for (0..cls.n -| 1) |j| plan.inp_pol[d.k - 1 + j] = cls_pol;
+    // Thermometer code: plane t is [difference >= vals[t + 1]], stored
+    // complemented where the polarity says so.
+    plan.nstate = d.k - 1;
+    plan.nin = cls.n - 1;
+    plan.u_base = d.vals[0];
+    for (0..d.k - 1) |t| {
+        const step = d.vals[t + 1] - d.vals[t];
+        plan.v0[t] = (s.gap >= d.vals[t + 1]) != in_pol;
+        plan.u_w[t] = if (plan.lvl_pol[t + 1]) -step else step;
+        if (plan.lvl_pol[t + 1]) plan.u_base += step;
+    }
+    plan.in_add = 0;
+    plan.in_max = 0;
     plan.cost = liveCost(plan);
     return plan;
 }
@@ -491,7 +528,7 @@ fn liveCost(plan: Plan) u32 {
 }
 
 fn liveNodes(plan: Plan) [max_nodes]bool {
-    const nl = plan.k - 1;
+    const nl = plan.nstate;
     var live = [_]bool{false} ** max_nodes;
     for (plan.out_v[0..nl]) |o| live[o] = true;
     for (plan.out_u[0..nl]) |o| live[o] = true;
@@ -769,7 +806,223 @@ fn buildSym(s: Scheme, d: Diffs, cls: Classes, cls_pol: bool, in_pol: bool, lvl_
         }
         plan.out_v[t - 1] = if (in_pol) y.op(.not, out, 0) else out;
     }
-    return finish(p, plan, d, cls, cls_pol, in_pol);
+    return finish(s, p, plan, d, cls, cls_pol, in_pol);
+}
+
+/// Integer vectors as bit planes, least significant first, and the vector
+/// operations Bergeron and Hamel's algorithm uses on them.
+const Bh = struct {
+    p: *Prog,
+    zero: u16,
+    ones: u16,
+
+    /// Most planes of one integer vector.
+    const max_planes = 8;
+    const Vec = struct { b: [max_planes]u16 = undefined, n: usize };
+
+    fn is(y: *Bh, a: u16, o: Op) bool {
+        return y.p.nodes[a].op == o;
+    }
+
+    fn op(y: *Bh, o: Op, a: u16, b: u16) u16 {
+        return y.p.emit(.{ .op = o, .a = a, .b = b });
+    }
+
+    fn not(y: *Bh, a: u16) u16 {
+        return y.op(.not, a, 0);
+    }
+
+    fn xor(y: *Bh, a: u16, b: u16) u16 {
+        if (y.is(a, .zero)) return b;
+        if (y.is(b, .zero)) return a;
+        if (y.is(a, .ones)) return y.not(b);
+        if (y.is(b, .ones)) return y.not(a);
+        return y.op(.xor, a, b);
+    }
+
+    fn at(y: *Bh, a: Vec, k: usize) u16 {
+        return if (k < a.n) a.b[k] else y.zero;
+    }
+
+    /// a + b + carry, ripple carry over the planes, `width` planes kept.
+    fn add(y: *Bh, a: Vec, b: Vec, width: usize, carry_in: u16) Vec {
+        var out: Vec = .{ .n = width };
+        var carry = carry_in;
+        for (0..width) |k| {
+            const x = y.at(a, k);
+            const z = y.at(b, k);
+            const t = y.xor(x, z);
+            out.b[k] = y.xor(t, carry);
+            if (k + 1 < width) carry = y.op(.@"or", y.op(.@"and", x, z), y.op(.@"and", carry, t));
+        }
+        return out;
+    }
+
+    /// a + x for a 0/1 vector x.
+    fn addBit(y: *Bh, a: Vec, x0: u16, width: usize) Vec {
+        var out: Vec = .{ .n = width };
+        var x = x0;
+        for (0..width) |k| {
+            out.b[k] = y.xor(y.at(a, k), x);
+            if (k + 1 < width) x = y.op(.@"and", y.at(a, k), x);
+        }
+        return out;
+    }
+
+    /// a - b as a + not b + 1.
+    fn sub(y: *Bh, a: Vec, b: Vec, width: usize) Vec {
+        var nb: Vec = .{ .n = width };
+        for (0..width) |k| nb.b[k] = y.not(y.at(b, k));
+        return y.add(a, nb, width, y.ones);
+    }
+
+    /// out[i] = [a = lo + i]: a product of plane literals from the top plane
+    /// down, literals and prefixes shared between the values of one call.
+    fn eq(y: *Bh, a: Vec, lo: usize, out: []u16) void {
+        var lit = [_][2]?u16{.{ null, null }} ** max_planes;
+        var pre = [_][1 << max_planes]?u16{[_]?u16{null} ** (1 << max_planes)} ** max_planes;
+        for (out, lo..) |*o, k| {
+            var acc = y.ones;
+            var t = a.n;
+            while (t > 0) {
+                t -= 1;
+                const bit = (k >> t) & 1;
+                if (lit[t][bit] == null) lit[t][bit] = if (bit == 1) a.b[t] else y.not(a.b[t]);
+                if (pre[t][k >> t] == null) pre[t][k >> t] = y.op(.@"and", acc, lit[t][bit].?);
+                acc = pre[t][k >> t].?;
+            }
+            o.* = acc;
+        }
+    }
+
+    /// Planes of the number of j with ks[j] = 0, for nested vectors
+    /// ks[0] <= ks[1] <= ...; nks holds the complements already computed.
+    fn countZeros(y: *Bh, ks: []const u16, nks: []const u16, width: usize) Vec {
+        const top = ks.len;
+        var out: Vec = .{ .n = width };
+        for (0..width) |t| {
+            var acc = y.zero;
+            var q: usize = 1;
+            while (q <= top >> t) : (q += 2) { // count in [q 2^t, (q+1) 2^t)
+                const lo = q << t;
+                const hi = (q + 1) << t;
+                const ge = if (lo - 1 < nks.len) nks[lo - 1] else y.not(ks[lo - 1]);
+                acc = y.op(.@"or", acc, y.op(.@"and", ge, if (hi <= top) ks[hi - 1] else y.ones));
+            }
+            out.b[t] = acc;
+        }
+        return out;
+    }
+
+    /// Their Ind(X, Y) (p. 58): X, extended upward through the rows of Y. The
+    /// level of the row-0 difference starts with a carry into row 1.
+    fn ind(y: *Bh, from_row0: bool, x: u16, z: u16) u16 {
+        const xz = y.op(.@"or", x, z);
+        const run = if (from_row0) y.op(.add, y.not(x), y.not(xz)) else y.not(y.op(.add, x, xz));
+        return y.op(.@"or", x, y.op(.@"and", z, run));
+    }
+};
+
+fn bitLength(x: i32) usize {
+    return @max(1, 32 - @as(usize, @clz(@as(u32, @intCast(x)))));
+}
+
+/// Bergeron and Hamel's vector algorithm (Int. J. Found. Comput. Sci.
+/// 13(1):53-65, 2002, listing on p. 64) as a word program. The paper works on
+/// vectors of small integers and leaves their operations open; here a vector
+/// is a list of bit planes, addition is a ripple-carry adder over the planes
+/// and equality with a constant is a product of plane literals. Their scheme
+/// has one indel cost c and substitution costs 0 <= delta < 2c, in search
+/// mode. Outside that:
+///   * negative costs are mapped into their range by sigma' = sigma + 2x,
+///     c = gap + x, since C'[i][j] = C[i][j] + x(i + j) obeys their recurrence;
+///   * a substitution cost above 2c is never used by an optimal alignment
+///     (a deletion and an insertion cost 2c), so costs are capped at 2c;
+///   * global mode changes only the row-0 difference (2c instead of c + x).
+/// Differences are kept as Delta-h + c and c - Delta-v, both in 0..2c.
+///
+/// The listing is run with its last two assignments read as simultaneous and
+/// with Delta-h read from the cumulative vectors K = (r <= k), as
+/// review/factcheck/bh.py does. `listing`: every printed operation is emitted
+/// and counted, on substitution planes of full width, with nothing shared, as
+/// that script counts it. Otherwise the program is compiled like the others:
+/// identical nodes are shared, substitution planes that are always zero are
+/// constants, and the factor not K of the vector N, which the result does not
+/// need, is left out.
+fn buildBh(s: Scheme, d: Diffs, cls: Classes, listing: bool) Plan {
+    @setEvalBranchQuota(1 << 30);
+    const x: i32 = @max(0, @divFloor(1 - cls.c[0], 2));
+    const c: i32 = s.gap + x;
+    if (4 * c >= 1 << Bh.max_planes) @compileError("bitdp: costs too wide for the Bergeron-Hamel builder");
+    const levels: usize = @intCast(2 * c);
+    const nh = bitLength(2 * c);
+    const ns = nh + 1; // Delta-v + delta <= 4c
+    const dmax = @min(cls.c[cls.n - 1] + 2 * x, 2 * c);
+    const nin = if (listing) ns else bitLength(dmax);
+    const row0: usize = @intCast(if (s.mode == .search) c + x else 2 * c); // Delta-h + c in row 0
+
+    var p = Prog{ .raw = listing };
+    var y = Bh{ .p = &p, .zero = p.emit(.{ .op = .zero }), .ones = p.emit(.{ .op = .ones }) };
+    var dv: Bh.Vec = .{ .n = nh };
+    for (0..nh) |k| dv.b[k] = p.emit(.{ .op = .input, .a = @intCast(k) });
+    var dl: Bh.Vec = .{ .n = nin };
+    for (0..nin) |j| dl.b[j] = p.emit(.{ .op = .input, .a = @intCast(nh + j) });
+
+    const sum = y.add(dv, dl, ns, y.zero);
+    var e: [1 << Bh.max_planes]u16 = undefined;
+    y.eq(sum, 0, e[0..levels]); // (Delta-v + delta = k)
+    var one: [1]u16 = undefined;
+    y.eq(dv, 0, &one);
+    const zv = one[0]; // (Delta-v = 0)
+
+    var ks: [1 << Bh.max_planes]u16 = undefined;
+    var nks: [1 << Bh.max_planes]u16 = undefined;
+    var nn: usize = 0;
+    var cum = y.ind(row0 == 0, e[0], zv); // K = (r <= k)
+    ks[0] = cum;
+    var v = dv;
+    for (1..levels) |k| {
+        const up = y.op(if (row0 < k) .shl1 else .shl0, cum, 0);
+        y.eq(v, k, &one);
+        var n = y.op(.@"or", y.op(.@"and", up, one[0]), e[k]);
+        if (listing) {
+            nks[nn] = y.not(cum);
+            n = y.op(.@"and", n, nks[nn]);
+            nn += 1;
+        }
+        const r = y.ind(row0 == k, n, zv);
+        if (k + 1 < levels) v = y.addBit(v, y.not(up), ns); // V is dead after the last level
+        cum = y.op(.@"or", cum, r);
+        ks[k] = cum;
+    }
+    const dh = y.countZeros(ks[0..levels], nks[0..nn], nh);
+    var dh_up: Bh.Vec = .{ .n = nh };
+    for (0..nh) |k| dh_up.b[k] = y.op(if ((row0 >> @intCast(k)) & 1 == 1) .shl1 else .shl0, dh.b[k], 0);
+    const dv_out = y.sub(y.add(dh_up, dv, nh, y.zero), dh, nh);
+
+    var plan: Plan = undefined;
+    plan.vals = d.vals;
+    plan.k = d.k;
+    plan.nodes = p.nodes;
+    plan.len = p.len;
+    plan.cls = cls;
+    plan.inp_pol = [_]bool{false} ** max_inputs;
+    plan.lvl_pol = [_]bool{false} ** max_vals;
+    plan.chains = @intCast(levels); // one word addition per level
+    plan.method = .bh;
+    plan.nstate = @intCast(nh);
+    plan.nin = @intCast(nin);
+    plan.v0 = [_]bool{false} ** max_vals; // c - Delta-v = 0 in column 0
+    plan.u_base = -(c + x);
+    for (0..nh) |k| {
+        plan.out_v[k] = dv_out.b[k];
+        plan.out_u[k] = dh_up.b[k]; // bit i: Delta-h + c of row i
+        plan.u_w[k] = @as(i32, 1) << @intCast(k);
+    }
+    plan.in_add = 2 * x;
+    plan.in_max = 2 * c;
+    plan.cost = liveCost(plan);
+    return plan;
 }
 
 /// Which builders and passes `deriveWith` may use (for ablations).
@@ -780,7 +1033,23 @@ pub const Options = struct {
     direct: bool = true,
     /// Symbolic builder with unary sums from merging networks.
     merge: bool = true,
+    /// Bergeron and Hamel's vector algorithm on bit planes (`buildBh`).
+    bh: bool = false,
+
+    /// Bergeron and Hamel's algorithm alone.
+    pub const bh_only: Options = .{ .truth_table = false, .direct = false, .merge = false, .bh = true };
+    /// Every builder; the plan with the fewest operations wins, ours on a tie.
+    pub const best_of_both: Options = .{ .bh = true };
 };
+
+/// Bergeron and Hamel's listing, operation for operation (see `buildBh`).
+pub fn bhListing(comptime s: Scheme) Plan {
+    comptime {
+        if (s.gap <= 0) @compileError("bitdp: gap cost must be positive");
+        const cls = classes(s);
+        return buildBh(s, diffs(s, cls), cls, true);
+    }
+}
 
 /// Derive the cheapest plan with every builder and pass enabled.
 pub fn derive(comptime s: Scheme) Plan {
@@ -810,6 +1079,10 @@ pub fn deriveWith(comptime s: Scheme, comptime opt: Options) Plan {
             cand[nc] = build(s, d, cls, pol & 1 != 0, pol & 2 != 0);
             nc += 1;
         };
+        if (opt.bh) {
+            cand[nc] = buildBh(s, d, cls, false);
+            nc += 1;
+        }
         if (nc == 0) @compileError("bitdp: no builder enabled for this scheme");
         var best = cand[0];
         for (cand[1..nc]) |c| {

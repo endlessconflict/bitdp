@@ -47,41 +47,31 @@ int main(int argc, char **argv) {
             mat[i * 5 + j] = (int8_t)s;
         }
 
-    FILE *f = fopen(argv[2], "rb");
-    if (!f) return 1;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = malloc(size + 1);
-    if (fread(buf, 1, size, f) != (size_t)size) return 1;
-    buf[size] = 0;
-    fclose(f);
-
-    uint8_t *q = malloc(1 << 20), *t = malloc(1 << 20);
-    long long total = 0, cells = 0, pairs = 0;
-    double busy = 0;
     // without KSW_EZ_GENERIC_SC ksw2 reads only mat[0] (match) and mat[1] (mismatch)
     int flag = KSW_EZ_SCORE_ONLY | (!strcmp(argv[1], "tstv") ? KSW_EZ_GENERIC_SC : 0);
     ksw_extz_t ez;
     memset(&ez, 0, sizeof ez);
+    pairset in = pairs_load(argv[2]);
+    if (!in.p) return 1;
+    for (long long i = 0; i < in.count; i++) { // nucleotide codes, in place
+        for (int j = 0; j < in.m[i]; j++) in.p[i][j] = (char)code(in.p[i][j]);
+        for (int j = 0; j < in.n[i]; j++) in.t[i][j] = (char)code(in.t[i][j]);
+    }
+    long long *cost = malloc((in.count + 1) * sizeof *cost);
+    long long total = 0, rounds = 0;
+    double sec, min_sec = bench_min_seconds(), t0 = now();
+    do {
+        for (long long i = 0; i < in.count; i++) {
+            ksw_extz2_sse(0, in.m[i], (uint8_t *)in.p[i], in.n[i], (uint8_t *)in.t[i], 5, mat, 0, (int8_t)gap, -1, -1, 0,
+                          flag, &ez);
+            cost[i] = -(long long)ez.score;
+        }
+        rounds++;
+    } while ((sec = now() - t0) < min_sec);
     pairhash ph;
     pairhash_init(&ph);
-    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
-        char *tab = strchr(line, '\t');
-        if (!tab) continue;
-        *tab = 0;
-        int m = strlen(line), n = strlen(tab + 1);
-        for (int i = 0; i < m; i++) q[i] = code(line[i]);
-        for (int i = 0; i < n; i++) t[i] = code(tab[1 + i]);
-        double t0 = now();
-        ksw_extz2_sse(0, m, q, n, t, 5, mat, 0, (int8_t)gap, -1, -1, 0, flag, &ez);
-        busy += now() - t0;
-        total -= ez.score;
-        pairhash_add(&ph, -(long long)ez.score);
-        cells += (long long)m * n;
-        pairs++;
-    }
-    printf("ksw2_extz2_sse %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", argv[1], pairs, total,
-           pairhash_end(&ph), busy, cells / busy * 1e-9);
+    for (long long i = 0; i < in.count; i++) total += cost[i], pairhash_add(&ph, cost[i]);
+    printf("ksw2_extz2_sse %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f rounds=%lld\n", argv[1], in.count, total,
+           pairhash_end(&ph), sec, in.cells * rounds / sec * 1e-9, rounds);
     return 0;
 }

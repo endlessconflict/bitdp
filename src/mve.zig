@@ -12,7 +12,7 @@ fn printPlan(comptime s: bitdp.Scheme) void {
     if (plan.len <= 40) for (plan.nodes[0..plan.len], 0..) |n, i| {
         std.debug.print("  r{d:<3} = {s:<5} {d} {d}\n", .{ i, @tagName(n.op), n.a, n.b });
     };
-    std.debug.print("  out_v {any}  out_u {any}  lvl_pol {any}\n", .{ plan.out_v[0 .. plan.k - 1], plan.out_u[0 .. plan.k - 1], plan.lvl_pol[1..plan.k] });
+    std.debug.print("  out_v {any}  out_u {any}  lvl_pol {any}\n", .{ plan.out_v[0..plan.nstate], plan.out_u[0..plan.nstate], plan.lvl_pol[1..plan.k] });
 }
 
 fn verify(comptime s: bitdp.Scheme, pairs: usize) !void {

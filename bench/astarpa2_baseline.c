@@ -27,38 +27,25 @@ int main(int argc, char **argv) {
     }
     int full = !strcmp(argv[1], "full");
 
-    FILE *f = fopen(argv[2], "rb");
-    if (!f) return 1;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = malloc(size + 1);
-    if (fread(buf, 1, size, f) != (size_t)size) return 1;
-    buf[size] = 0;
-    fclose(f);
-
-    long long total = 0, cells = 0, pairs = 0;
-    double busy = 0;
+    pairset in = pairs_load(argv[2]);
+    if (!in.p) return 1;
+    long long *cost = malloc((in.count + 1) * sizeof *cost);
+    long long total = 0, rounds = 0;
+    double sec, min_sec = bench_min_seconds(), t0 = now();
+    do {
+        for (long long i = 0; i < in.count; i++) {
+            uint8_t *cigar;
+            uintptr_t cigar_len;
+            cost[i] = full ? astarpa2_full((const uint8_t *)in.p[i], in.m[i], (const uint8_t *)in.t[i], in.n[i], &cigar, &cigar_len)
+                           : astarpa2_simple((const uint8_t *)in.p[i], in.m[i], (const uint8_t *)in.t[i], in.n[i], &cigar, &cigar_len);
+            astarpa_free_cigar(cigar);
+        }
+        rounds++;
+    } while ((sec = now() - t0) < min_sec);
     pairhash ph;
     pairhash_init(&ph);
-    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
-        char *tab = strchr(line, '\t');
-        if (!tab) continue;
-        *tab = 0;
-        size_t m = strlen(line), n = strlen(tab + 1);
-        uint8_t *cigar;
-        uintptr_t cigar_len;
-        double t0 = now();
-        uint64_t c = full ? astarpa2_full((const uint8_t *)line, m, (const uint8_t *)tab + 1, n, &cigar, &cigar_len)
-                          : astarpa2_simple((const uint8_t *)line, m, (const uint8_t *)tab + 1, n, &cigar, &cigar_len);
-        astarpa_free_cigar(cigar);
-        busy += now() - t0;
-        total += (long long)c;
-        pairhash_add(&ph, (long long)c);
-        cells += (long long)m * n;
-        pairs++;
-    }
-    printf("astarpa2-%s edit pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f\n", argv[1], pairs, total,
-           pairhash_end(&ph), busy, cells / busy * 1e-9);
+    for (long long i = 0; i < in.count; i++) total += cost[i], pairhash_add(&ph, cost[i]);
+    printf("astarpa2-%s edit pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f rounds=%lld\n", argv[1], in.count, total,
+           pairhash_end(&ph), sec, in.cells * rounds / sec * 1e-9, rounds);
     return 0;
 }

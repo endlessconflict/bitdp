@@ -11,18 +11,26 @@ pub const Plan = derive_mod.Plan;
 pub const Op = derive_mod.Op;
 pub const derive = derive_mod.derive;
 pub const deriveWith = derive_mod.deriveWith;
+pub const bhListing = derive_mod.bhListing;
 pub const Options = derive_mod.Options;
 pub const derive_opcost = derive_mod.opCost;
 
 /// Alignment cost kernel for `scheme` (global or search mode).
 pub fn Kernel(comptime scheme: Scheme) type {
-    const plan = comptime derive(scheme);
-    const nl = plan.k - 1;
-    const ncp = plan.cls.n - 1;
+    return KernelWith(scheme, .{});
+}
+
+/// Kernel from the builders `opt` enables: `Options.bh_only` runs Bergeron and
+/// Hamel's algorithm on bit planes, `Options.best_of_both` the shorter program.
+pub fn KernelWith(comptime scheme: Scheme, comptime opt: Options) type {
+    const plan = comptime deriveWith(scheme, opt);
+    const nl = plan.nstate;
+    const ncp = plan.nin;
     return struct {
         pub const ops = plan.cost;
         pub const chains = plan.chains;
-        pub const levels = nl;
+        pub const levels = plan.k - 1;
+        pub const method = plan.method;
 
         /// Pattern prepared once for texts of any length; any pattern length.
         pub const Aligner = struct {
@@ -148,6 +156,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
 
             pub fn init(patterns: []const []const u8) Packed {
                 comptime std.debug.assert(scheme.mode == .search);
+                comptime if (plan.method == .bh) @compileError("bitdp: Packed runs derived plans only");
                 var p: Packed = .{ .count = 0, .planes = undefined, .spacer = @splat(0), .read = @splat(0), .down = @splat(0), .acc0 = @splat(0), .slots = undefined, .nslots = @splat(0) };
                 var cpl: [plane_words]u64 = undefined;
                 var planes: [plane_words][lanes]u64 = undefined;
@@ -232,7 +241,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
                 const hv: V = h;
                 const base: V = @as(V, unit) * @as(V, @splat(@as(u64, @intCast(@abs(plan.vals[0])))));
                 var vp: [nl]V = undefined;
-                for (0..nl) |t| vp[t] = if ((scheme.gap >= plan.vals[t + 1]) != plan.inp_pol[t]) ones else zeros;
+                for (0..nl) |t| vp[t] = if (plan.v0[t]) ones else zeros;
                 var acc: V = p.acc0;
                 for (text, 1..) |ch, end| {
                     const cs = slot_of[ch];
@@ -339,7 +348,8 @@ pub fn Kernel(comptime scheme: Scheme) type {
 
         /// Class planes of one pattern: word w of plane j for text slot s is at
         /// (j * nslot + s) * words + w, with bit i set when the cost of pattern[i]
-        /// against that slot's character is at least cls.c[j+1].
+        /// against that slot's character is at least cls.c[j+1]. A `bh` plan reads
+        /// bit j of that cost, shifted and capped as the plan says, instead.
         fn fillPlanes(pattern: []const u8, words: usize, cpl: []u64) void {
             @memset(cpl, 0);
             for (pattern, 0..) |c, i| setRow(c, words, cpl, i / rows, @intCast(i % rows));
@@ -351,7 +361,11 @@ pub fn Kernel(comptime scheme: Scheme) type {
             for (0..nslot) |s| {
                 const cost = if (s < scheme.alphabet.len) scheme.cost(c, scheme.alphabet[s]) else plan.cls.c[plan.cls.n - 1];
                 inline for (0..ncp) |j| {
-                    if (cost >= plan.cls.c[j + 1]) cpl[(j * nslot + s) * words + w] |= @as(u64, 1) << bit;
+                    const set = if (plan.method == .bh)
+                        (std.math.clamp(cost + plan.in_add, 0, plan.in_max) >> j) & 1 != 0
+                    else
+                        cost >= plan.cls.c[j + 1];
+                    if (set) cpl[(j * nslot + s) * words + w] |= @as(u64, 1) << bit;
                 }
             }
         }
@@ -389,10 +403,7 @@ pub fn Kernel(comptime scheme: Scheme) type {
             const words = ct_words orelse rt_words;
             const ones: W = @splat(~@as(u64, 0));
             const zeros: W = @splat(0);
-            for (0..nl) |t| {
-                const bit = scheme.gap >= plan.vals[t + 1];
-                @memset(vp[t * words ..][0..words], if (bit != plan.inp_pol[t]) ones else zeros);
-            }
+            for (0..nl) |t| @memset(vp[t * words ..][0..words], if (plan.v0[t]) ones else zeros);
             var score_word: W = undefined;
             var shift: @Vector(L, u6) = undefined;
             var score: S = undefined;
@@ -452,11 +463,10 @@ pub fn Kernel(comptime scheme: Scheme) type {
                     // Bottom-row state, read at row m of the lanes whose m falls in this word.
                     if (w >= sw_min and w <= sw_max) {
                         const here = score_word == @as(W, @splat(w));
-                        var inc: S = @splat(plan.vals[0]);
+                        var inc: S = @splat(plan.u_base);
                         inline for (0..nl) |t| {
-                            const pol: W = @splat(@intFromBool(plan.lvl_pol[t + 1]));
-                            const bit: S = @intCast(((r[plan.out_u[t]] >> shift) & @as(W, @splat(1))) ^ pol);
-                            inc += bit * @as(S, @splat(plan.vals[t + 1] - plan.vals[t]));
+                            const bit: S = @intCast((r[plan.out_u[t]] >> shift) & @as(W, @splat(1)));
+                            inc += bit * @as(S, @splat(plan.u_w[t]));
                         }
                         score += @select(i64, @select(bool, here, active, @as(@Vector(L, bool), @splat(false))), inc, @as(S, @splat(0)));
                     }
@@ -488,8 +498,23 @@ const table1_rounds = 12; // rounds of 4 * lanes + 3 pairs per Table 1 scheme
 const search_pairs = 3_000; // per scheme, patterns up to 200 rows
 const near_identical_pairs = 1_000; // per scheme, 63 to 300 rows against a copy with at most 3 edits
 
-fn checkRandom(comptime s: Scheme, pairs: usize, seed: u64) !void {
-    const K = Kernel(s);
+/// The builders every test of a kernel path runs under: ours, and Bergeron and Hamel's.
+const builders = [_]Options{ .{}, Options.bh_only };
+
+fn both(comptime f: anytype) !void {
+    inline for (builders) |opt| try f(opt);
+}
+
+/// The schemes of the paper's Table 1, in its order.
+const table1 = [_]Scheme{
+    .{},                          .{ .mismatch = 2 }, .{ .mismatch = 1, .gap = 2 },
+    .{ .mismatch = 3, .gap = 2 }, schemes.bitpal[1],  schemes.bitpal[2],
+    schemes.bitpal[3],            schemes.bitpal[4],  schemes.ts_tv,
+    schemes.blosum62Linear(4),
+};
+
+fn checkRandom(comptime s: Scheme, comptime opt: Options, pairs: usize, seed: u64) !void {
+    const K = KernelWith(s, opt);
     var prng = std.Random.DefaultPrng.init(seed);
     const rnd = prng.random();
     var buf: [65]i64 = undefined;
@@ -508,11 +533,15 @@ fn checkRandom(comptime s: Scheme, pairs: usize, seed: u64) !void {
 }
 
 test "unit edit distance: random pairs match the scalar oracle" {
-    try checkRandom(.{}, 20_000, 1);
+    inline for (builders) |opt| try checkRandom(.{}, opt, 20_000, 1);
 }
 
 test "unit edit distance: exhaustive over {A,C,G}, lengths 1..4 x 0..4" {
-    const K = Kernel(.{});
+    try both(exhaustive);
+}
+
+fn exhaustive(comptime opt: Options) !void {
+    const K = KernelWith(.{}, opt);
     var buf: [8]i64 = undefined;
     var pat: [4]u8 = undefined;
     var txt: [4]u8 = undefined;
@@ -563,16 +592,31 @@ test "derived unit-cost kernel: one carry chain, no more word ops than Myers' ha
 
 test "BitPAl weights (2, -3, -5) as costs: exact, and cheaper than BitPAl's 265 ops/word" {
     const s: Scheme = .{ .match = -2, .mismatch = 3, .gap = 5 };
-    try checkRandom(s, 3_000, 3);
+    inline for (builders) |opt| try checkRandom(s, opt, 3_000, 3);
     // 265 is the operation count Loving et al. (2014) report for these weights.
     try std.testing.expect(Kernel(s).ops < 265);
 }
 
+test "Bergeron and Hamel's listing: operations per column on the schemes of the paper's Table 1" {
+    // The listing with every printed operation executed; review/factcheck/bh.py counts it
+    // independently (the B&H planes column of Table 1). The compiled program is never longer.
+    const listing = [_]u32{ 52, 52, 129, 129, 414, 615, 831, 971, 129, 760 };
+    inline for (table1, listing) |s, n| {
+        try std.testing.expectEqual(n, comptime derive_mod.bhListing(s).cost);
+        try std.testing.expect(KernelWith(s, Options.bh_only).ops <= n);
+        try std.testing.expect(KernelWith(s, Options.best_of_both).ops == @min(Kernel(s).ops, KernelWith(s, Options.bh_only).ops));
+    }
+}
+
 test "three cost classes (transition 1, transversion 2): matches the scalar oracle" {
-    try checkRandom(.{ .sub = &schemes.tsTvCost, .gap = 2 }, 5_000, 4);
+    inline for (builders) |opt| try checkRandom(.{ .sub = &schemes.tsTvCost, .gap = 2 }, opt, 5_000, 4);
 }
 
 test "multi-word patterns (up to 300) match the scalar oracle" {
+    try both(multiWord);
+}
+
+fn multiWord(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(5);
     const rnd = prng.random();
@@ -585,7 +629,7 @@ test "multi-word patterns (up to 300) match the scalar oracle" {
             const n = rnd.intRangeAtMost(usize, 0, 300);
             for (p[0..m]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
             for (t[0..n]) |*x| x.* = s.alphabet[rnd.uintLessThan(usize, s.alphabet.len)];
-            var a = try Kernel(s).Aligner.init(gpa, p[0..m]);
+            var a = try KernelWith(s, opt).Aligner.init(gpa, p[0..m]);
             defer a.deinit(gpa);
             try std.testing.expectEqual(reference.scalar(s, p[0..m], t[0..n], &buf), a.distance(t[0..n]));
         }
@@ -593,6 +637,10 @@ test "multi-word patterns (up to 300) match the scalar oracle" {
 }
 
 test "near-identical multi-word pairs (long carries across words) match the scalar oracle" {
+    try both(nearIdentical);
+}
+
+fn nearIdentical(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(11);
     const rnd = prng.random();
@@ -623,7 +671,7 @@ test "near-identical multi-word pairs (long carries across words) match the scal
                     },
                 }
             }
-            var a = try Kernel(s).Aligner.init(gpa, p[0..m]);
+            var a = try KernelWith(s, opt).Aligner.init(gpa, p[0..m]);
             defer a.deinit(gpa);
             try std.testing.expectEqual(reference.scalar(s, p[0..m], t[0..n], &buf), a.distance(t[0..n]));
         }
@@ -631,12 +679,16 @@ test "near-identical multi-word pairs (long carries across words) match the scal
 }
 
 test "batched SIMD lanes match the scalar oracle (mixed lengths)" {
+    try both(batchedLanes);
+}
+
+fn batchedLanes(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(6);
     const rnd = prng.random();
     var buf: [201]i64 = undefined;
     inline for ([_]Scheme{ .{}, .{ .match = -2, .mismatch = 3, .gap = 5 } }) |s| {
-        const K = Kernel(s);
+        const K = KernelWith(s, opt);
         const count = 3 * K.lanes + 1;
         var store: [count][2][200]u8 = undefined;
         var ps: [count][]const u8 = undefined;
@@ -658,18 +710,16 @@ test "batched SIMD lanes match the scalar oracle (mixed lengths)" {
 }
 
 test "every scheme of the paper's Table 1: prepared and batched kernels match the scalar oracle pair by pair (up to 300 rows)" {
+    try both(tableOne);
+}
+
+fn tableOne(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(8);
     const rnd = prng.random();
     var buf: [301]i64 = undefined;
-    const table1 = comptime [_]Scheme{
-        .{},                          .{ .mismatch = 2 }, .{ .mismatch = 1, .gap = 2 },
-        .{ .mismatch = 3, .gap = 2 }, schemes.bitpal[1],  schemes.bitpal[2],
-        schemes.bitpal[3],            schemes.bitpal[4],  schemes.ts_tv,
-        schemes.blosum62Linear(4),
-    };
     inline for (table1) |s| {
-        const K = Kernel(s);
+        const K = KernelWith(s, opt);
         const count = 4 * K.lanes + 3;
         var store: [count][2][400]u8 = undefined;
         var ps: [count][]const u8 = undefined;
@@ -697,12 +747,16 @@ test "every scheme of the paper's Table 1: prepared and batched kernels match th
 }
 
 test "groups: several patterns against one shared text match the scalar oracle" {
+    try both(sharedText);
+}
+
+fn sharedText(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(8);
     const rnd = prng.random();
     var buf: [301]i64 = undefined;
     inline for ([_]Scheme{ .{}, schemes.ts_tv }) |s| {
-        const K = Kernel(s);
+        const K = KernelWith(s, opt);
         var store: [K.lanes][300]u8 = undefined;
         var ps: [K.lanes][]const u8 = undefined;
         for (0..20) |_| {
@@ -724,6 +778,10 @@ test "groups: several patterns against one shared text match the scalar oracle" 
 }
 
 test "search mode (pattern against the best substring) matches the scalar oracle" {
+    try both(searchMode);
+}
+
+fn searchMode(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     var prng = std.Random.DefaultPrng.init(12);
     const rnd = prng.random();
@@ -738,7 +796,7 @@ test "search mode (pattern against the best substring) matches the scalar oracle
             break :blk b;
         },
     }) |s| {
-        const K = Kernel(s);
+        const K = KernelWith(s, opt);
         var p: [200]u8 = undefined;
         var t: [300]u8 = undefined;
         for (0..search_pairs) |_| {
@@ -809,6 +867,10 @@ test "packed scan (several patterns per word) reports exactly what the scalar DP
 }
 
 test "adversarial inputs match the scalar oracle on every path: homopolymers, the costliest pair, periodic and two-letter sequences, text bytes outside the alphabet, word-boundary lengths, n = 0" {
+    try both(adversarial);
+}
+
+fn adversarial(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     const ms = [_]usize{ 1, 2, 62, 63, 64, 125, 126, 127, 188, 189, 300 };
     const ns = [_]usize{ 0, 1, 2, 5, 63, 126, 400 };
@@ -868,7 +930,7 @@ test "adversarial inputs match the scalar oracle on every path: homopolymers, th
                 x.mode = mode;
                 break :blk x;
             };
-            const K = Kernel(s);
+            const K = KernelWith(s, opt);
             const o = comptime Oracle.of(s);
             for (0..5) |kind| {
                 for (ms, 0..) |m, a| for (ns, 0..) |n, b| {
@@ -921,9 +983,13 @@ fn lastRow(s: Scheme, p: []const u8, text: []const u8, col: []i64) i64 {
 }
 
 test "group scan reports exactly the end positions the scalar DP finds" {
+    try both(groupScan);
+}
+
+fn groupScan(comptime opt: Options) !void {
     const gpa = std.testing.allocator;
     const s: Scheme = .{ .sub = &schemes.tsTvCost, .gap = 2, .mode = .search };
-    const K = Kernel(s);
+    const K = KernelWith(s, opt);
     var prng = std.Random.DefaultPrng.init(13);
     const rnd = prng.random();
     var text: [2000]u8 = undefined;

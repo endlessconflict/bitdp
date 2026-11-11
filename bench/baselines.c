@@ -6,7 +6,7 @@
 // K (edlib only): distance bound passed to edlib; pairs above it count as failures.
 //
 // Prints the sum of alignment costs (negated parasail scores) and their per-pair hash (pairhash.h), so
-// the result can be checked against bitdp's pair by pair, and the time spent aligning.
+// the result can be checked against bitdp's pair by pair, and the time of the whole loop over the pairs (pairhash.h).
 
 #include <edlib.h>
 #include <parasail.h>
@@ -69,49 +69,38 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    FILE *f = fopen(argv[3], "rb");
-    if (!f) return 1;
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = malloc(size + 1);
-    if (fread(buf, 1, size, f) != (size_t)size) return 1;
-    buf[size] = 0;
-    fclose(f);
-
-    long long total = 0, cells = 0, pairs = 0, over_k = 0;
-    double busy = 0;
+    pairset in = pairs_load(argv[3]);
+    if (!in.p) return 1;
+    long long *cost = malloc((in.count + 1) * sizeof *cost);
+    long long total = 0, rounds = 0;
+    double sec, min_sec = bench_min_seconds(), t0 = now();
+    do {
+        for (long long i = 0; i < in.count; i++) {
+            if (fn) {
+                parasail_result_t *r = fn(in.p[i], in.m[i], in.t[i], in.n[i], gap, gap, matrix);
+                cost[i] = -parasail_result_get_score(r);
+                parasail_result_free(r);
+            } else {
+                EdlibAlignResult r = edlibAlign(in.p[i], in.m[i], in.t[i], in.n[i],
+                                                edlibNewAlignConfig(k, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
+                cost[i] = r.editDistance; // -1 above K
+                edlibFreeAlignResult(r);
+            }
+        }
+        rounds++;
+    } while ((sec = now() - t0) < min_sec);
     pairhash ph;
     pairhash_init(&ph);
-    for (char *line = strtok(buf, "\n"); line; line = strtok(NULL, "\n")) {
-        char *tab = strchr(line, '\t');
-        if (!tab) continue;
-        *tab = 0;
-        const char *p = line, *t = tab + 1;
-        int m = strlen(p), n = strlen(t);
-        long long c;
-        double t0 = now();
-        if (fn) {
-            parasail_result_t *r = fn(p, m, t, n, gap, gap, matrix);
-            c = -parasail_result_get_score(r);
-            parasail_result_free(r);
-        } else {
-            EdlibAlignResult r = edlibAlign(p, m, t, n, edlibNewAlignConfig(k, EDLIB_MODE_NW, EDLIB_TASK_DISTANCE, NULL, 0));
-            c = r.editDistance; // -1 above K
-            edlibFreeAlignResult(r);
-        }
-        busy += now() - t0;
-        if (c < 0 && !fn) over_k++;
-        else total += c;
-        pairhash_add(&ph, c);
-        cells += (long long)m * n;
-        pairs++;
+    long long over_k = 0;
+    for (long long i = 0; i < in.count; i++) {
+        if (cost[i] < 0 && !fn) over_k++;
+        else total += cost[i];
+        pairhash_add(&ph, cost[i]);
     }
-    printf("%s %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f", tool, scheme, pairs, total,
-           pairhash_end(&ph), busy, cells / busy * 1e-9);
+    printf("%s %s pairs=%lld cost_sum=%lld hash=%016llx seconds=%.4f gcups=%.3f rounds=%lld", tool, scheme, in.count, total,
+           pairhash_end(&ph), sec, in.cells * rounds / sec * 1e-9, rounds);
     if (k >= 0) printf(" k=%d over_k=%lld", k, over_k);
     printf("\n");
     parasail_matrix_free(matrix);
-    free(buf);
     return 0;
 }

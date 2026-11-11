@@ -27,3 +27,49 @@ static unsigned long long pairhash_end(pairhash *ph) {
     if (ph->dump) fclose(ph->dump);
     return ph->h;
 }
+
+// The timed region of every driver is the whole loop over the input, repeated until BENCH_MIN_SECONDS
+// (default 0.25) have passed; the rate is over all rounds. Costs are stored in the loop and hashed after it.
+static inline double bench_min_seconds(void) {
+    const char *s = getenv("BENCH_MIN_SECONDS");
+    return s ? atof(s) : 0.25;
+}
+
+// A "pattern<TAB>text" file, split in place before the timed region.
+typedef struct {
+    char **p, **t;
+    int *m, *n;
+    long long count, cells;
+} pairset;
+
+static inline pairset pairs_load(const char *path) {
+    pairset s = {0};
+    FILE *f = fopen(path, "rb");
+    if (!f) return s;
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *buf = (char *)malloc(size + 1);
+    if (fread(buf, 1, size, f) != (size_t)size) size = 0;
+    buf[size] = 0;
+    fclose(f);
+    long long lines = 1;
+    for (long i = 0; i < size; i++) lines += buf[i] == '\n';
+    s.p = (char **)malloc(lines * sizeof *s.p), s.t = (char **)malloc(lines * sizeof *s.t);
+    s.m = (int *)malloc(lines * sizeof *s.m), s.n = (int *)malloc(lines * sizeof *s.n);
+    for (char *line = buf, *end; *line; line = end) {
+        char *stop = line;
+        while (*stop && *stop != '\n') stop++;
+        end = *stop ? stop + 1 : stop;
+        *stop = 0;
+        char *tab = line;
+        while (*tab && *tab != '\t') tab++;
+        if (!*tab) continue;
+        *tab = 0;
+        s.p[s.count] = line, s.t[s.count] = tab + 1;
+        s.m[s.count] = (int)(tab - line), s.n[s.count] = (int)(stop - tab - 1);
+        s.cells += (long long)s.m[s.count] * s.n[s.count];
+        s.count++;
+    }
+    return s;
+}

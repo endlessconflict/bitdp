@@ -6,8 +6,7 @@ deletions, each at rate div/3 per position.
 usage: python gen.py OUT PAIRS LENGTH DIVERGENCE {dna|protein} [SEED]
        python gen.py ava QUERIES SUBJECTS NQ NS LENGTH [SEED]
 The second form writes uniform random DNA, one sequence per line, for the all-against-all
-setting (bench/reproduce.sh draws Table 4's 64 x 12 500 of 150 bp and 16 x 1 250 of 1 kbp
-with seeds 4 and 5).
+setting (bench/reproduce.sh draws the five sets of the paper's Table 2 with seeds 11, 4, 12, 5 and 13).
 """
 import random
 import sys
